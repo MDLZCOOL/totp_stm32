@@ -28,6 +28,8 @@
 #include "SEGGER_RTT.h"
 #include "TOTP.h"
 #include <time.h>
+#include "gui_guider.h"
+#include "rtc_utils.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -58,10 +60,14 @@ DMA_HandleTypeDef hdma_spi1_tx;
 PCD_HandleTypeDef hpcd_USB_OTG_FS;
 
 /* USER CODE BEGIN PV */
-RTC_TimeTypeDef currentTime;
-RTC_DateTypeDef currentDate;
-time_t timestamp;
-struct tm currTime;
+uint8_t hours, minutes, seconds;
+uint8_t weekday, date, month;
+uint16_t year;
+RTC_TimeTypeDef sTime;
+RTC_DateTypeDef sDate;
+uint32_t current_timestamp;
+lv_ui guider_ui;
+uint8_t hmacKey[] = {0x87, 0xa8, 0xfa, 0x14, 0x93, 0x6c, 0x4e, 0x64, 0x91, 0x0e};
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -118,19 +124,13 @@ int main(void)
   BLK_OFF;
   SEGGER_RTT_Init();
 
-  HAL_RTC_GetTime(&hrtc, &currentTime, RTC_FORMAT_BIN);
-  HAL_RTC_GetDate(&hrtc, &currentDate, RTC_FORMAT_BIN);
-  currTime.tm_year = currentDate.Year + 100;  // In fact: 2000 + 18 - 1900
-  currTime.tm_mday = currentDate.Date;
-  currTime.tm_mon  = currentDate.Month - 1;
-  currTime.tm_hour = currentTime.Hours;
-  currTime.tm_min  = currentTime.Minutes;
-  currTime.tm_sec  = currentTime.Seconds;
-  timestamp = mktime(&currTime);
+  set_rtc_time_and_date(22, 57, 10, RTC_WEEKDAY_MONDAY, 23, RTC_MONTH_JUNE, 2025);
+  TOTP(hmacKey, 10, 30);
 
   lv_init();
   lv_port_disp_init();
   lv_port_indev_init();
+  setup_ui(&guider_ui);
   BLK_ON;
 
   extern void cdc_acm_init(uint8_t busid, uintptr_t reg_base);
@@ -141,6 +141,12 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+    current_timestamp = get_current_timestamp_and_datetime(
+                                &hours, &minutes, &seconds,
+                                &weekday, &date, &month, &year) - 28800;
+    uint32_t code = getCodeFromSteps(current_timestamp / 30);
+    SEGGER_RTT_printf(0, "Current Unix Timestamp: %lu\r\n", current_timestamp);
+    SEGGER_RTT_printf(0, "Current Code: %lu\r\n", code);
     lv_timer_handler();
     /* USER CODE END WHILE */
 

@@ -222,7 +222,7 @@ static bool touchpad_is_pressed(void) {
 /*Get the x and y coordinates if the touchpad is pressed*/
 static void touchpad_get_xy(lv_coord_t *x, lv_coord_t *y) {
     /*Your code comes here*/
-    // SEGGER_RTT_printf(0, "x:%d y:%d\r\n", User_Touch.Touch_XY[0].X_Point, User_Touch.Touch_XY[0].Y_Point);
+    SEGGER_RTT_printf(0, "x:%d y:%d\r\n", User_Touch.Touch_XY[0].X_Point, User_Touch.Touch_XY[0].Y_Point);
     (*x) = User_Touch.Touch_XY[0].Y_Point;
     (*y) = 320 - User_Touch.Touch_XY[0].X_Point;
 }

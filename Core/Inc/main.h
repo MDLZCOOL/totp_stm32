@@ -55,6 +55,7 @@ void Error_Handler(void);
 /* USER CODE BEGIN EFP */
 extern SPI_HandleTypeDef hspi1;
 extern I2C_HandleTypeDef hi2c2;
+extern RTC_HandleTypeDef hrtc;
 void SPI1_SetSpeed(uint8_t SpeedSet);
 /* USER CODE END EFP */
 

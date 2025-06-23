@@ -8,12 +8,14 @@
 
 /* ================ USB common Configuration ================ */
 
-#ifdef __RTTHREAD__
-#include <rtthread.h>
-
-#define CONFIG_USB_PRINTF(...) rt_kprintf(__VA_ARGS__)
+#if defined(__has_include) && __has_include("SEGGER_RTT.h")
+    #include "SEGGER_RTT.h"
+    #define CONFIG_USB_PRINTF(...) SEGGER_RTT_printf(0, __VA_ARGS__)
+#elif defined(__RTTHREAD__)
+    #define CONFIG_USB_PRINTF(...) rt_kprintf(__VA_ARGS__)
 #else
-#define CONFIG_USB_PRINTF(...) printf(__VA_ARGS__)
+    #include <stdio.h>
+    #define CONFIG_USB_PRINTF(...) printf(__VA_ARGS__)
 #endif
 
 #ifndef CONFIG_USB_DBG_LEVEL
@@ -257,7 +259,7 @@
 #endif
 
 #ifndef CONFIG_USBDEV_EP_NUM
-#define CONFIG_USBDEV_EP_NUM 8
+#define CONFIG_USBDEV_EP_NUM 4
 #endif
 
 // #define CONFIG_USBDEV_SOF_ENABLE
@@ -272,12 +274,12 @@
 /* (5 * number of control endpoints + 8) + ((largest USB packet used / 4) + 1 for
  * status information) + (2 * number of OUT endpoints) + 1 for Global NAK
  */
-// #define CONFIG_USB_DWC2_RXALL_FIFO_SIZE (1024 / 4)
+#define CONFIG_USB_DWC2_RXALL_FIFO_SIZE (1024 / 4)
 /* IN Endpoints Max packet Size / 4 */
-// #define CONFIG_USB_DWC2_TX0_FIFO_SIZE (64 / 4)
-// #define CONFIG_USB_DWC2_TX1_FIFO_SIZE (1024 / 4)
-// #define CONFIG_USB_DWC2_TX2_FIFO_SIZE (64 / 4)
-// #define CONFIG_USB_DWC2_TX3_FIFO_SIZE (64 / 4)
+#define CONFIG_USB_DWC2_TX0_FIFO_SIZE (64 / 4)
+#define CONFIG_USB_DWC2_TX1_FIFO_SIZE (64 / 4)
+#define CONFIG_USB_DWC2_TX2_FIFO_SIZE (64 / 4)
+#define CONFIG_USB_DWC2_TX3_FIFO_SIZE (64 / 4)
 // #define CONFIG_USB_DWC2_TX4_FIFO_SIZE (0 / 4)
 // #define CONFIG_USB_DWC2_TX5_FIFO_SIZE (0 / 4)
 // #define CONFIG_USB_DWC2_TX6_FIFO_SIZE (0 / 4)
