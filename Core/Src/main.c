@@ -29,11 +29,15 @@
 #include "SEGGER_RTT.h"
 #include "TOTP.h"
 #include <time.h>
+#include <sys/errno.h>
 
-#include "file_handling.h"
+#include "app_usb_msc.h"
 #include "gui_guider.h"
 #include "rtc_utils.h"
-#include "w25qxx.h"
+#include "ffconf.h"
+#include "ff.h"
+#include "file_opera.h"
+#include "w25flash.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -45,6 +49,7 @@
 /* USER CODE BEGIN PD */
 #define BLK_ON HAL_GPIO_WritePin(LCD_PWR_GPIO_Port, LCD_PWR_Pin, GPIO_PIN_SET);
 #define BLK_OFF HAL_GPIO_WritePin(LCD_PWR_GPIO_Port, LCD_PWR_Pin, GPIO_PIN_RESET);
+#define printf(...) SEGGER_RTT_printf(0, ##__VA_ARGS__)
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -61,8 +66,6 @@ SPI_HandleTypeDef hspi1;
 SPI_HandleTypeDef hspi2;
 DMA_HandleTypeDef hdma_spi1_rx;
 DMA_HandleTypeDef hdma_spi1_tx;
-DMA_HandleTypeDef hdma_spi2_rx;
-DMA_HandleTypeDef hdma_spi2_tx;
 
 PCD_HandleTypeDef hpcd_USB_OTG_FS;
 
@@ -92,7 +95,25 @@ static void MX_SPI2_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+int _write(int file, char* ptr, int len)
+{
+  if (file == 1 /* stdout */ || file == 2 /* stderr */)
+  {
+    return SEGGER_RTT_Write(0, ptr, len);
+  }
+  errno = EBADF;
+  return -1;
+}
 
+/*定义自己的存储设备*/
+/*用户存储设备扇区字节数*/
+#define User_Sector 4096
+/*用户存储设备FatFS对象*/
+#define User_FatFs 	USERFatFS
+/*用户存储设备卷路径*/
+#define User_SDPath USERPath
+/*用户存储设备初始化类型*/
+#define User_FatType FM_FAT32
 /* USER CODE END 0 */
 
 /**
@@ -128,24 +149,37 @@ int main(void)
   MX_SPI1_Init();
   MX_RTC_Init();
   MX_I2C3_Init();
-  MX_FATFS_Init();
+  // MX_FATFS_Init();
   MX_SPI2_Init();
   /* USER CODE BEGIN 2 */
   BLK_OFF;
   SEGGER_RTT_Init();
   SEGGER_RTT_printf(0, "System begin...\r\n");
+  // printf("actually from srtt\r\n");
+  // BYTE workBuffer[4*User_Sector];
+  // uint16_t id = Flash_ReadID();
+  // f_mkfs(User_SDPath, 1, 0, workBuffer, 4*User_Sector);
+  // printf("%#X\r\n", id);
+  // FRESULT res = f_mount(&USERFatFS, "0:", 1);
+  // printf("%d\r\n",res);
+  // fatTest_GetDiskInfo();
+  // fatTest_ScanDir("0:/");
+  // fatTest_WriteTXTFile("readme.txt", 2019, 3, 5);
+  // fatTest_ScanDir("0:/");
 
   set_rtc_time_and_date(22, 57, 10, RTC_WEEKDAY_MONDAY, 23, RTC_MONTH_JUNE, 2025);
   TOTP(hmacKey, 10, 30);
 
-  lv_init();
-  lv_port_disp_init();
-  lv_port_indev_init();
-  setup_ui(&guider_ui);
+  // lv_init();
+  // lv_port_disp_init();
+  // lv_port_indev_init();
+  // setup_ui(&guider_ui);
   BLK_ON;
 
-  extern void cdc_acm_init(uint8_t busid, uintptr_t reg_base);
-  cdc_acm_init(0, USB_OTG_FS_PERIPH_BASE);
+  msc_init(0, USB_OTG_FS_PERIPH_BASE);
+  // extern void msc_ram_init(uint8_t busid, uintptr_t reg_base);
+  // msc_ram_init(0, USB_OTG_FS_PERIPH_BASE);
+
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -158,8 +192,8 @@ int main(void)
     // uint32_t code = getCodeFromSteps(current_timestamp / 30);
     // SEGGER_RTT_printf(0, "Current Unix Timestamp: %lu\r\n", current_timestamp);
     // SEGGER_RTT_printf(0, "Current Code: %lu\r\n", code);
-    SEGGER_RTT_printf(0, "alive\r\n");
-    lv_timer_handler();
+    // SEGGER_RTT_printf(0, "alive\r\n");
+    // lv_timer_handler();
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -343,7 +377,7 @@ static void MX_SPI2_Init(void)
   hspi2.Init.CLKPolarity = SPI_POLARITY_LOW;
   hspi2.Init.CLKPhase = SPI_PHASE_1EDGE;
   hspi2.Init.NSS = SPI_NSS_SOFT;
-  hspi2.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_2;
+  hspi2.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_8;
   hspi2.Init.FirstBit = SPI_FIRSTBIT_MSB;
   hspi2.Init.TIMode = SPI_TIMODE_DISABLE;
   hspi2.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
@@ -401,15 +435,8 @@ static void MX_DMA_Init(void)
 
   /* DMA controller clock enable */
   __HAL_RCC_DMA2_CLK_ENABLE();
-  __HAL_RCC_DMA1_CLK_ENABLE();
 
   /* DMA interrupt init */
-  /* DMA1_Stream3_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(DMA1_Stream3_IRQn, 0, 0);
-  HAL_NVIC_EnableIRQ(DMA1_Stream3_IRQn);
-  /* DMA1_Stream4_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(DMA1_Stream4_IRQn, 0, 0);
-  HAL_NVIC_EnableIRQ(DMA1_Stream4_IRQn);
   /* DMA2_Stream0_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(DMA2_Stream0_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(DMA2_Stream0_IRQn);

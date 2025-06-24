@@ -6,7 +6,7 @@
   ******************************************************************************
   * @attention
   *
-  * Copyright (c) 2025 STMicroelectronics.
+  * Copyright (c) 2024 STMicroelectronics.
   * All rights reserved.
   *
   * This software is licensed under terms that can be found in the LICENSE file
@@ -30,10 +30,10 @@ FIL USERFile;       /* File object for USER */
 void MX_FATFS_Init(void)
 {
   /*## FatFS: Link the USER driver ###########################*/
-  retUSER = FATFS_LinkDriver(&SPI_Driver, USERPath);
+  retUSER = FATFS_LinkDriver(&USER_Driver, USERPath);
 
   /* USER CODE BEGIN Init */
-  /* additional user code for init */
+    /* additional user code for init */
   /* USER CODE END Init */
 }
 
@@ -45,7 +45,7 @@ void MX_FATFS_Init(void)
 DWORD get_fattime(void)
 {
   /* USER CODE BEGIN get_fattime */
-  return 0;
+    fat_GetFatTimeFromRTC();
   /* USER CODE END get_fattime */
 }
 
