@@ -11,6 +11,7 @@
 #include "gui_guider.h"
 #include "widgets_init.h"
 #include <stdlib.h>
+#include <string.h>
 
 
 __attribute__((unused)) void kb_event_cb (lv_event_t *e) {

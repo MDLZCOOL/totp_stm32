@@ -170,17 +170,14 @@ int main(void)
   set_rtc_time_and_date(22, 57, 10, RTC_WEEKDAY_MONDAY, 23, RTC_MONTH_JUNE, 2025);
   TOTP(hmacKey, 10, 30);
 
-  // lv_init();
-  // lv_port_disp_init();
-  // lv_port_indev_init();
-  // setup_ui(&guider_ui);
+  lv_init();
+  lv_port_disp_init();
+  lv_port_indev_init();
+  setup_ui(&guider_ui);
   BLK_ON;
 
   W25QXX_Init();
   msc_init(0, USB_OTG_FS_PERIPH_BASE);
-  // extern void msc_ram_init(uint8_t busid, uintptr_t reg_base);
-  // msc_ram_init(0, USB_OTG_FS_PERIPH_BASE);
-
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -194,7 +191,7 @@ int main(void)
     // SEGGER_RTT_printf(0, "Current Unix Timestamp: %lu\r\n", current_timestamp);
     // SEGGER_RTT_printf(0, "Current Code: %lu\r\n", code);
     // SEGGER_RTT_printf(0, "alive\r\n");
-    // lv_timer_handler();
+    lv_timer_handler();
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
