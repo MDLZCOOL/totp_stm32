@@ -23,21 +23,25 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include <stdio.h>
+#include <sys/errno.h>
+#include "SEGGER_RTT.h"
+
 #include "lvgl.h"
 #include "lv_port_disp.h"
 #include "lv_port_indev.h"
-#include "SEGGER_RTT.h"
+#include "gui_guider.h"
+
 #include "TOTP.h"
 #include <time.h>
-#include <sys/errno.h>
+#include "rtc_utils.h"
 
 #include "app_usb_msc.h"
-#include "gui_guider.h"
-#include "rtc_utils.h"
 #include "ffconf.h"
 #include "ff.h"
 #include "file_opera.h"
 #include "w25flash.h"
+
+#include "base32.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -105,15 +109,34 @@ int _write(int file, char* ptr, int len)
   return -1;
 }
 
-/*定义自己的存储设备*/
-/*用户存储设备扇区字节数*/
-#define User_Sector 4096
-/*用户存储设备FatFS对象*/
-#define User_FatFs 	USERFatFS
-/*用户存储设备卷路径*/
-#define User_SDPath USERPath
-/*用户存储设备初始化类型*/
-#define User_FatType FM_FAT32
+void update_table(lv_obj_t * obj)
+{
+  // row 1
+  lv_table_set_cell_value(obj,1,0,"0");
+  lv_table_set_cell_value(obj,1,1,"1");
+  lv_table_set_cell_value(obj,1,2,"2");
+
+  // row 2
+  lv_table_set_cell_value(obj,2,0,"0");
+  lv_table_set_cell_value(obj,2,1,"1");
+  lv_table_set_cell_value(obj,2,2,"2");
+
+  // row 3
+  lv_table_set_cell_value(obj,3,0,"0");
+  lv_table_set_cell_value(obj,3,1,"1");
+  lv_table_set_cell_value(obj,3,2,"2");
+
+  // row 4
+  lv_table_set_cell_value(obj,4,0,"0");
+  lv_table_set_cell_value(obj,4,1,"1");
+  lv_table_set_cell_value(obj,4,2,"2");
+
+  // row 5
+  lv_table_set_cell_value(obj,5,0,"0");
+  lv_table_set_cell_value(obj,5,1,"1");
+  lv_table_set_cell_value(obj,5,2,"2");
+}
+
 /* USER CODE END 0 */
 
 /**
@@ -152,30 +175,21 @@ int main(void)
   // MX_FATFS_Init();
   MX_SPI2_Init();
   /* USER CODE BEGIN 2 */
-  BLK_OFF;
   SEGGER_RTT_Init();
   SEGGER_RTT_printf(0, "System begin...\r\n");
-  // printf("actually from srtt\r\n");
-  // BYTE workBuffer[4*User_Sector];
-  // uint16_t id = Flash_ReadID();
-  // f_mkfs(User_SDPath, 1, 0, workBuffer, 4*User_Sector);
-  // printf("%#X\r\n", id);
-  // FRESULT res = f_mount(&USERFatFS, "0:", 1);
-  // printf("%d\r\n",res);
-  // fatTest_GetDiskInfo();
-  // fatTest_ScanDir("0:/");
-  // fatTest_WriteTXTFile("readme.txt", 2019, 3, 5);
-  // fatTest_ScanDir("0:/");
 
   set_rtc_time_and_date(22, 57, 10, RTC_WEEKDAY_MONDAY, 23, RTC_MONTH_JUNE, 2025);
   TOTP(hmacKey, 10, 30);
 
+  BLK_OFF;
   lv_init();
   lv_port_disp_init();
   lv_port_indev_init();
   setup_ui(&guider_ui);
   BLK_ON;
 
+  update_table(guider_ui.screen_table_1);
+  test_base32();
   W25QXX_Init();
   msc_init(0, USB_OTG_FS_PERIPH_BASE);
   /* USER CODE END 2 */

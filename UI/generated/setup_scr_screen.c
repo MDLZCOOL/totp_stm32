@@ -115,23 +115,26 @@ void setup_scr_screen(lv_ui *ui)
     //Write codes screen_table_1
     ui->screen_table_1 = lv_table_create(ui->screen_cont_1);
     lv_table_set_col_cnt(ui->screen_table_1,3);
-    lv_table_set_row_cnt(ui->screen_table_1,5);
+    lv_table_set_row_cnt(ui->screen_table_1,6);
     lv_table_set_cell_value(ui->screen_table_1,0,0,"Account");
-    lv_table_set_cell_value(ui->screen_table_1,1,0,"GitHub");
-    lv_table_set_cell_value(ui->screen_table_1,2,0,"Jetbrains");
-    lv_table_set_cell_value(ui->screen_table_1,3,0,"Mozilla");
-    lv_table_set_cell_value(ui->screen_table_1,4,0,"NVIDIA");
+    lv_table_set_cell_value(ui->screen_table_1,1,0,"-");
+    lv_table_set_cell_value(ui->screen_table_1,2,0,"-");
+    lv_table_set_cell_value(ui->screen_table_1,3,0,"-");
+    lv_table_set_cell_value(ui->screen_table_1,4,0,"-");
+    lv_table_set_cell_value(ui->screen_table_1,5,0,"-");
     lv_table_set_cell_value(ui->screen_table_1,0,1,"2FA Code");
-    lv_table_set_cell_value(ui->screen_table_1,1,1,"888 888");
-    lv_table_set_cell_value(ui->screen_table_1,2,1,"888 888");
-    lv_table_set_cell_value(ui->screen_table_1,3,1,"888 888");
-    lv_table_set_cell_value(ui->screen_table_1,4,1,"888 888");
+    lv_table_set_cell_value(ui->screen_table_1,1,1,"-");
+    lv_table_set_cell_value(ui->screen_table_1,2,1,"-");
+    lv_table_set_cell_value(ui->screen_table_1,3,1,"-");
+    lv_table_set_cell_value(ui->screen_table_1,4,1,"-");
+    lv_table_set_cell_value(ui->screen_table_1,5,1,"-");
     lv_table_set_cell_value(ui->screen_table_1,0,2,"EXP Time");
-    lv_table_set_cell_value(ui->screen_table_1,1,2,"0");
-    lv_table_set_cell_value(ui->screen_table_1,2,2,"0");
-    lv_table_set_cell_value(ui->screen_table_1,3,2,"0");
-    lv_table_set_cell_value(ui->screen_table_1,4,2,"0");
-    lv_obj_set_pos(ui->screen_table_1, 39, 85);
+    lv_table_set_cell_value(ui->screen_table_1,1,2,"-");
+    lv_table_set_cell_value(ui->screen_table_1,2,2,"-");
+    lv_table_set_cell_value(ui->screen_table_1,3,2,"-");
+    lv_table_set_cell_value(ui->screen_table_1,4,2,"-");
+    lv_table_set_cell_value(ui->screen_table_1,5,2,"-");
+    lv_obj_set_pos(ui->screen_table_1, 42, 66);
     lv_obj_set_scrollbar_mode(ui->screen_table_1, LV_SCROLLBAR_MODE_OFF);
 
     //Write style for screen_table_1, Part: LV_PART_MAIN, State: LV_STATE_DEFAULT.
