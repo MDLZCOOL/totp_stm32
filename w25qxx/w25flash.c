@@ -1,445 +1,382 @@
-/* 文件： w25flash.c
- * 功能描述： Flash 存储器W25Q128的驱动程序
- * 作者：王维波
- * 修改日期：2019-06-05
- */
-
 #include "w25flash.h"
+/////////////////////////////////////////////////////////////////////////////////
+//本程序只供学习使用，未经作者许可，不得用于其它任何用途
+//ALIENTEK STM32F103开发板
+//W25QXX驱动代码
+//正点原子@ALIENTEK
+//技术论坛:www.openedv.com
+//创建日期:2017/5/30
+//版本：V1.0
+//版权所有，盗版必究。
+//Copyright(C) 广州市星翼电子科技有限公司 2014-2024
+//All rights reserved
+//////////////////////////////////////////////////////////////////////////////////
 
-#define MAX_TIMEOUT   200		//SPI轮询操作时的最大等待时间,ms
+uint16_t W25QXX_TYPE = W25Q128; //默认是W25Q128
 
-//SPI接口发送一个字节,byteData是需要发送的数据
-HAL_StatusTypeDef SPI_TransmitOneByte(uint8_t byteData) {
-	return HAL_SPI_Transmit(&SPI_HANDLE, &byteData, 1, MAX_TIMEOUT);
-}
+//4Kbytes为一个Sector
+//16个扇区为1个Block
+//W25Q256
+//容量为32M字节,共有512个Block,8192个Sector
 
-//SPI接口发送多个字节, pBuffer是发送数据缓存区指针，byteCount是发送数据字节数，byteCount最大256
-HAL_StatusTypeDef SPI_TransmitBytes(uint8_t *pBuffer, uint16_t byteCount) {
-	return HAL_SPI_Transmit(&SPI_HANDLE, pBuffer, byteCount, MAX_TIMEOUT);
-}
-
-//SPI接口接收一个字节， 返回接收的一个字节数据
-uint8_t SPI_ReceiveOneByte() {
-	uint8_t byteData = 0;
-	HAL_SPI_Receive(&SPI_HANDLE, &byteData, 1, MAX_TIMEOUT);
-	return byteData;
-}
-
-//SPI接口接收多个字节， pBuffer是接收数据缓存区指针，byteCount是需要接收数据的字节数
-HAL_StatusTypeDef SPI_ReceiveBytes(uint8_t *pBuffer, uint16_t byteCount) {
-	return HAL_SPI_Receive(&SPI_HANDLE, pBuffer, byteCount, MAX_TIMEOUT);
-}
-
-//Command=0x05:  Read Status Register-1,返回寄存器SR1的值
-uint8_t Flash_ReadSR1(void) {
-	uint8_t byte = 0;
-	__Select_Flash();	//CS=0
-	SPI_TransmitOneByte(0x05); //Command=0x05:  Read Status Register-1
-	byte = SPI_ReceiveOneByte();
-	__Deselect_Flash();	//CS=1
-	return byte;
-}
-
-//Command=0x35:  Read Status Register-2,返回寄存器SR2的值
-uint8_t Flash_ReadSR2(void) {
-	uint8_t byte = 0;
-	__Select_Flash();	//CS=0
-	SPI_TransmitOneByte(0x35); //Command=0x35:  Read Status Register-2
-	byte = SPI_ReceiveOneByte();	//读取一个字节
-	__Deselect_Flash();	//CS=1
-	return byte;
-}
-
-//Command=0x01:  Write Status Register,	只写SR1的值
-//耗时大约10-15ms
-void Flash_WriteSR1(uint8_t SR1) {
-	Flash_Write_Enable();       //必须使 WEL=1
-
-	__Select_Flash();	//CS=0
-	SPI_TransmitOneByte(0x01);  //Command=0x01:  Write Status Register,	只写SR1的值
-	SPI_TransmitOneByte(0x00);    //SR1的值
-//	SPI_WriteOneByte(0x00);    //SR2的值, 只发送SR1的值，而不发送SR2的值， QE和CMP将自动被清零
-	__Deselect_Flash();	//CS=1
-
-	Flash_Wait_Busy(); 	   //耗时大约10-15ms
-}
-
-HAL_StatusTypeDef Flash_WriteVolatile_Enable(void) //Command=0x50: Write Volatile Enable
+//初始化SPI FLASH的IO口
+void W25QXX_Init(void)
 {
-	__Select_Flash();	//CS=0
-	HAL_StatusTypeDef result = SPI_TransmitOneByte(0x50);
-	__Deselect_Flash();	//CS=1
-	return result;
+	uint8_t temp;
+	W25QXX_CS(1); //SPI FLASH不选中
+	// SPI1_Init();		   			        //已经在main.c中初始化
+	W25QXX_TYPE = W25QXX_ReadID(); //读取FLASH ID.
+	if (W25QXX_TYPE == W25Q128)	   //SPI FLASH为W25Q256
+	{
+		temp = W25QXX_ReadSR(3); //读取状态寄存器3，判断地址模式
+		if ((temp & 0X01) == 0)	 //如果不是4字节地址模式,则进入4字节地址模式
+		{
+			W25QXX_CS(0);						  //选中
+			SPIx_ReadWriteByte(W25X_Enable4ByteAddr); //发送进入4字节地址模式指令
+			uint8_t data = W25X_Enable4ByteAddr;
+			SPIx_WriteByte(&data, 1);
+
+			W25QXX_CS(1); //取消片选
+		}
+	}
 }
 
-//Command=0x06: Write Enable,    使WEL=1
-HAL_StatusTypeDef Flash_Write_Enable(void) {
-	__Select_Flash();	//CS=0
-	HAL_StatusTypeDef result = SPI_TransmitOneByte(0x06); //Command=0x06: Write Enable,    使WEL=1
-	__Deselect_Flash();	//CS=1
-	Flash_Wait_Busy(); 	//等待操作完成
-	return result;
+//读取W25QXX的状态寄存器，W25QXX一共有3个状态寄存器
+//状态寄存器1：
+//BIT7  6   5   4   3   2   1   0
+//SPR   RV  TB BP2 BP1 BP0 WEL BUSY
+//SPR:默认0,状态寄存器保护位,配合WP使用
+//TB,BP2,BP1,BP0:FLASH区域写保护设置
+//WEL:写使能锁定
+//BUSY:忙标记位(1,忙;0,空闲)
+//默认:0x00
+//状态寄存器2：
+//BIT7  6   5   4   3   2   1   0
+//SUS   CMP LB3 LB2 LB1 (R) QE  SRP1
+//状态寄存器3：
+//BIT7      6    5    4   3   2   1   0
+//HOLD/RST  DRV1 DRV0 (R) (R) WPS ADP ADS
+//regno:状态寄存器号，范:1~3
+//返回值:状态寄存器值
+uint8_t W25QXX_ReadSR(uint8_t regno)
+{
+	uint8_t byte = 0, command = 0;
+	switch (regno)
+	{
+	case 1:
+		command = W25X_ReadStatusReg1; //读状态寄存器1指令
+		break;
+	case 2:
+		command = W25X_ReadStatusReg2; //读状态寄存器2指令
+		break;
+	case 3:
+		command = W25X_ReadStatusReg3; //读状态寄存器3指令
+		break;
+	default:
+		command = W25X_ReadStatusReg1;
+		break;
+	}
+	W25QXX_CS(0);							 //使能器件
+	SPIx_ReadWriteByte(command);				 //发送读取状态寄存器命令
+	SPIx_ReadByte(&byte, 1);
+	W25QXX_CS(1); //取消片选
+	return byte;
 }
-
-//Command=0x04, Write Disable，	  使WEL=0
-HAL_StatusTypeDef Flash_Write_Disable(void) {
-	__Select_Flash();	//CS=0
-	HAL_StatusTypeDef result = SPI_TransmitOneByte(0x04); //Command=0x04, Write Disable，	  使WEL=0
-	__Deselect_Flash();	//CS=1
-	Flash_Wait_Busy(); 	   //
-	return result;
+//写W25QXX状态寄存器
+void W25QXX_Write_SR(uint8_t regno, uint8_t sr)
+{
+	uint8_t command = 0;
+	switch (regno)
+	{
+	case 1:
+		command = W25X_WriteStatusReg1; //写状态寄存器1指令
+		break;
+	case 2:
+		command = W25X_WriteStatusReg2; //写状态寄存器2指令
+		break;
+	case 3:
+		command = W25X_WriteStatusReg3; //写状态寄存器3指令
+		break;
+	default:
+		command = W25X_WriteStatusReg1;
+		break;
+	}
+	W25QXX_CS(0);			 //使能器件
+	SPIx_ReadWriteByte(command); //发送写取状态寄存器命令
+	SPIx_ReadWriteByte(sr);		 //写入一个字节
+	W25QXX_CS(1);			 //取消片选
 }
-
-//根据Block绝对编号获取地址, 共256个Block， BlockNo 取值范围0-255
-//每个块64K字节，16位地址，块内地址范围0x0000-0xFFFF。
-uint32_t Flash_Addr_byBlock(uint8_t BlockNo) {
-//	uint32_t addr=BlockNo*0x10000;
-
-	uint32_t addr = BlockNo;
-	addr = addr << 16; //左移16位，等于乘以0x10000
-	return addr;
+//W25QXX写使能
+//将WEL置位
+void W25QXX_Write_Enable(void)
+{
+	W25QXX_CS(0);					  //使能器件
+	SPIx_ReadWriteByte(W25X_WriteEnable); //发送写使能
+	W25QXX_CS(1);					  //取消片选
 }
-
-//根据Sector绝对编号获取地址, 共4096个Sector, SectorNo取值范围0-4095
-//每个扇区4K字节，12位地址，扇区内地址范围0x000-0xFFF
-uint32_t Flash_Addr_bySector(uint16_t SectorNo) {
-	if (SectorNo > 4095)	//不能超过4095
-		SectorNo = 0;
-//	uint32_t addr=SectorNo*0x1000;
-
-	uint32_t addr = SectorNo;
-	addr = addr << 12;		//左移12位,等于乘以0x1000
-	return addr;
-}
-
-//根据Page绝对编号获取地址，共65536个Page,  PageNo取值范围0-65535
-//每个页256字节，8位地址，页内地址范围0x00—0xFF
-uint32_t Flash_Addr_byPage(uint16_t PageNo) {
-//	uint32_t addr=PageNo*0x100;
-
-	uint32_t addr = PageNo;
-	addr = addr << 8;		//左移8位，等于乘以0x100
-	return addr;
-}
-
-//根据Block编号和内部Sector编号计算地址，一个Block有16个Sector
-//BlockNo取值范围0-255，  内部SubSectorNo取值范围0-15
-uint32_t Flash_Addr_byBlockSector(uint8_t BlockNo, uint8_t SubSectorNo) {
-	if (SubSectorNo > 15)	 //不能超过15
-		SubSectorNo = 0;
-
-//	uint32_t addr=BlockNo*0x10000;	//先计算Block的起始地址
-	uint32_t addr = BlockNo;
-	addr = addr << 16;	//先计算Block的起始地址
-
-//	uint32_t offset=SubSectorNo*0x1000;	//计算Sector的偏移地址
-	uint32_t offset = SubSectorNo;	//计算Sector的偏移地址
-	offset = offset << 12;	//计算Sector的偏移地址
-
-	addr += offset;
-
-	return addr;
-}
-
-//根据Block编号，内部Sector编号，内部Page编号获取地址
-//BlockNo取值范围0-255
-//一个Block有16个Sector， 内部SubSectorNo取值范围0-15
-//一个Sector有16个Page , 内部SubPageNo取值范围0-15
-uint32_t Flash_Addr_byBlockSectorPage(uint8_t BlockNo, uint8_t SubSectorNo,
-		uint8_t SubPageNo) {
-	if (SubSectorNo > 15)	//不能超过15
-		SubSectorNo = 0;
-
-	if (SubPageNo > 15)	//不能超过15
-		SubPageNo = 0;
-
-//	uint32_t addr=BlockNo*0x10000;		//先计算Block的起始地址
-	uint32_t addr = BlockNo;
-	addr = addr << 16;		//先计算Block的起始地址
-
-//	uint32_t offset=SubSectorNo*0x1000;	//计算Sector的偏移地址
-	uint32_t offset = SubSectorNo;	//计算Sector的偏移地址
-	offset = offset << 12;	//计算Sector的偏移地址
-	addr += offset;
-
-//	offset=SubPageNo*0x100;	//计算Page的偏移地址
-	offset = SubPageNo;
-	offset = offset << 8;	//计算Page的偏移地址
-
-	addr += offset;		//Page的起始地址
-	return addr;
-}
-
-//将24位地址分解为3个字节
-//globalAddr是全局24位地址, 返回 addrHigh高字节，addrMid中间字节，addrLow低字节
-void Flash_SpliteAddr(uint32_t globalAddr, uint8_t *addrHigh, uint8_t *addrMid,
-		uint8_t *addrLow) {
-	*addrHigh = (globalAddr >> 16);	//addrHigh=高字节
-
-	globalAddr = globalAddr & 0x0000FFFF;	//屏蔽高字节
-	*addrMid = (globalAddr >> 8);	//addrMid=中间字节
-
-	*addrLow = globalAddr & 0x000000FF;	//屏蔽中间字节， 只剩低字节，addrLow=低字节
+//W25QXX写禁止
+//将WEL清零
+void W25QXX_Write_Disable(void)
+{
+	W25QXX_CS(0);					   //使能器件
+	SPIx_ReadWriteByte(W25X_WriteDisable); //发送写禁止指令
+	W25QXX_CS(1);					   //取消片选
 }
 
 //读取芯片ID
 //返回值如下:
-// 0xEF17,表示芯片型号为W25Q128, Winbond,用过
-// 0xC817，表示芯片型号为GD25Q128,ELM，用过
-// 0x1C17，表示芯片型号为EN25Q128,台湾EON
-// 0xA117，表示芯片型号为FM25Q128，复旦微电子
-// 0x2018，表示芯片型号为N25Q128，美光
-// 0x2017，表示芯片型号为XM25QH128，武汉新芯，用过
-
-//读取芯片的制造商和器件ID，高字节是Manufacturer ID,低字节是Device ID
-uint16_t Flash_ReadID(void) {
+//0XEF13,表示芯片型号为W25Q80
+//0XEF14,表示芯片型号为W25Q16
+//0XEF15,表示芯片型号为W25Q32
+//0XEF16,表示芯片型号为W25Q64
+//0XEF17,表示芯片型号为W25Q128
+//0XEF18,表示芯片型号为W25Q256
+uint16_t W25QXX_ReadID(void)
+{
 	uint16_t Temp = 0;
-	__Select_Flash();	//CS=0
+	uint8_t byte = 0;
+	W25QXX_CS(0);
+	SPIx_ReadWriteByte(0x90); //发送读取ID命令
+	SPIx_ReadWriteByte(0x00);
+	SPIx_ReadWriteByte(0x00);
+	SPIx_ReadWriteByte(0x00);
 
-	SPI_TransmitOneByte(0x90);		//指令码，0x90=Manufacturer/Device ID
-	SPI_TransmitOneByte(0x00);		//dummy
-	SPI_TransmitOneByte(0x00);		//dummy
-	SPI_TransmitOneByte(0x00);		//0x00
-	Temp = SPI_ReceiveOneByte() << 8;	//Manufacturer ID
-	Temp |= SPI_ReceiveOneByte();	 	//Device ID, 与具体器件相关
+	SPIx_ReadByte(&byte, 1);
+	Temp |= byte;
+	SPIx_ReadByte(&byte, 1);
+	Temp |= byte;
 
-	__Deselect_Flash();	//CS=1
+	W25QXX_CS(1);
 	return Temp;
 }
-
-// 参数High32和Low32分别返回64位序列号的高32位和低32位的值
-// 函数返回值为64位序列号的值
-uint64_t Flash_ReadSerialNum(uint32_t *High32, uint32_t *Low32)	//读取64位序列号，
+//读取SPI FLASH
+//在指定地址开始读取指定长度的数据
+//pBuffer:数据存储区
+//ReadAddr:开始读取的地址(24bit)
+//NumByteToRead:要读取的字节数(最大65535)
+void W25QXX_Read(uint8_t *pBuffer, uint32_t ReadAddr, uint16_t NumByteToRead)
 {
-	uint8_t Temp = 0;
-	uint64_t SerialNum = 0;
-	uint32_t High = 0, Low = 0;
+	W25QXX_CS(0);				   //使能器件
+	SPIx_ReadWriteByte(W25X_ReadData); //发送读取命令
+	if (W25QXX_TYPE == W25Q256)	   //如果是W25Q256的话地址为4字节的，要发送最高8位
+	{
+		SPIx_ReadWriteByte((uint8_t)((ReadAddr) >> 24));
+	}
+	SPIx_ReadWriteByte((uint8_t)((ReadAddr) >> 16)); //发送24bit地址
+	SPIx_ReadWriteByte((uint8_t)((ReadAddr) >> 8));
+	SPIx_ReadWriteByte((uint8_t)ReadAddr);
 
-	__Select_Flash();	//CS=0
-	SPI_TransmitOneByte(0x4B);		//发送指令码, 4B=read Unique ID
-	SPI_TransmitOneByte(0x00);		//发送4个Dummy字节数据
-	SPI_TransmitOneByte(0x00);
-	SPI_TransmitOneByte(0x00);
-	SPI_TransmitOneByte(0x00);
+	SPIx_ReadByte(pBuffer, NumByteToRead);
+	uint16_t count = 10000;
+	while ((HAL_SPI_GetState(&SPI_CH) == HAL_SPI_STATE_BUSY_RX)&&count)
+	{
+		count --;
+	}
 
-	for (uint8_t i = 0; i < 4; i++)  //高32位
+	W25QXX_CS(1);
+}
+//SPI在一页(0~65535)内写入少于256个字节的数据
+//在指定地址开始写入最大256字节的数据
+//pBuffer:数据存储区
+//WriteAddr:开始写入的地址(24bit)
+//NumByteToWrite:要写入的字节数(最大256),该数不应该超过该页的剩余字节数!!!
+void W25QXX_Write_Page(uint8_t *pBuffer, uint32_t WriteAddr, uint16_t NumByteToWrite)
+{
+	// uint16_t i;
+	W25QXX_Write_Enable();			  //SET WEL
+	W25QXX_CS(0);					  //使能器件
+	SPIx_ReadWriteByte(W25X_PageProgram); //发送写页命令
+	if (W25QXX_TYPE == W25Q256)		  //如果是W25Q256的话地址为4字节的，要发送最高8位
+	{
+		SPIx_ReadWriteByte((uint8_t)((WriteAddr) >> 24));
+	}
+	SPIx_ReadWriteByte((uint8_t)((WriteAddr) >> 16)); //发送24bit地址
+	SPIx_ReadWriteByte((uint8_t)((WriteAddr) >> 8));
+	SPIx_ReadWriteByte((uint8_t)WriteAddr);
+
+	SPIx_WriteByte(pBuffer, NumByteToWrite);
+	uint16_t count = 10000;
+	while ((HAL_SPI_GetState(&SPI_CH) == HAL_SPI_STATE_BUSY_TX)&&count)
+	{
+		count --;
+	}
+
+		// for (i = 0; i < NumByteToWrite; i++)
+		// 	SPIx_ReadWriteByte(pBuffer[i]); //循环写数
+
+	W25QXX_CS(1);					//取消片选
+	W25QXX_Wait_Busy();				//等待写入结束
+}
+//无检验写SPI FLASH
+//必须确保所写的地址范围内的数据全部为0XFF,否则在非0XFF处写入的数据将失败!
+//具有自动换页功能
+//在指定地址开始写入指定长度的数据,但是要确保地址不越界!
+//pBuffer:数据存储区
+//WriteAddr:开始写入的地址(24bit)
+//NumByteToWrite:要写入的字节数(最大65535)
+//CHECK OK
+void W25QXX_Write_NoCheck(uint8_t *pBuffer, uint32_t WriteAddr, uint16_t NumByteToWrite)
+{
+	uint16_t pageremain;
+	pageremain = 256 - WriteAddr % 256; //单页剩余的字节数
+	if (NumByteToWrite <= pageremain)
+		pageremain = NumByteToWrite; //不大于256个字节
+	while (1)
+	{
+		W25QXX_Write_Page(pBuffer, WriteAddr, pageremain);
+		if (NumByteToWrite == pageremain)
+			break; //写入结束了
+		else	   //NumByteToWrite>pageremain
+		{
+			pBuffer += pageremain;
+			WriteAddr += pageremain;
+
+			NumByteToWrite -= pageremain; //减去已经写入了的字节数
+			if (NumByteToWrite > 256)
+				pageremain = 256; //一次可以写入256个字节
+			else
+				pageremain = NumByteToWrite; //不够256个字节了
+		}
+	};
+}
+//写SPI FLASH
+//在指定地址开始写入指定长度的数据
+//该函数带擦除操作!
+//pBuffer:数据存储区
+//WriteAddr:开始写入的地址(24bit)
+//NumByteToWrite:要写入的字节数(最大65535)
+uint8_t W25QXX_BUFFER[4096];
+void W25QXX_Write(uint8_t *pBuffer, uint32_t WriteAddr, uint16_t NumByteToWrite)
+{
+	uint32_t secpos;
+	uint16_t secoff;
+	uint16_t secremain;
+	uint16_t i;
+	uint8_t *W25QXX_BUF;
+	W25QXX_BUF = W25QXX_BUFFER;
+	secpos = WriteAddr / 4096; //扇区地址
+	secoff = WriteAddr % 4096; //在扇区内的偏移
+	secremain = 4096 - secoff; //扇区剩余空间大小
+	//printf("ad:%X,nb:%X\r\n",WriteAddr,NumByteToWrite);//测试用
+//	HAL_GPIO_TogglePin(LED_GPIO_Port, LED_Pin);
+	if (NumByteToWrite <= secremain)
+		secremain = NumByteToWrite; //不大于4096个字节
+	while (1)
+	{
+		W25QXX_Read(W25QXX_BUF, secpos * 4096, 4096); //读出整个扇区的内容
+		for (i = 0; i < secremain; i++)				  //校验数据
+		{
+			if (W25QXX_BUF[secoff + i] != 0XFF)
+				break; //需要擦除
+		}
+		if (i < secremain) //需要擦除
+		{
+			W25QXX_Erase_Sector(secpos);	//擦除这个扇区
+			for (i = 0; i < secremain; i++) //复制
 			{
-		Temp = SPI_ReceiveOneByte();
-		High = (High << 8);
-		High = High | Temp;  //按位或
+				W25QXX_BUF[i + secoff] = pBuffer[i];
+			}
+			W25QXX_Write_NoCheck(W25QXX_BUF, secpos * 4096, 4096); //写入整个扇区
+		}
+		else
+			W25QXX_Write_NoCheck(pBuffer, WriteAddr, secremain); //写已经擦除了的,直接写入扇区剩余区间.
+		if (NumByteToWrite == secremain)
+			break; //写入结束了
+		else	   //写入未结束
+		{
+			secpos++;	//扇区地址增1
+			secoff = 0; //偏移位置为0
+
+			pBuffer += secremain;		 //指针偏移
+			WriteAddr += secremain;		 //写地址偏移
+			NumByteToWrite -= secremain; //字节数递减
+			if (NumByteToWrite > 4096)
+				secremain = 4096; //下一个扇区还是写不完
+			else
+				secremain = NumByteToWrite; //下一个扇区可以写完了
+		}
+	};
+}
+//擦除整个芯片
+//等待时间超长...
+void W25QXX_Erase_Chip(void)
+{
+	W25QXX_Write_Enable(); //SET WEL
+	W25QXX_Wait_Busy();
+	W25QXX_CS(0);					//使能器件
+	SPIx_ReadWriteByte(W25X_ChipErase); //发送片擦除命令
+	W25QXX_CS(1);					//取消片选
+	W25QXX_Wait_Busy();				//等待芯片擦除结束
+}
+//擦除一个扇区
+//Dst_Addr:扇区地址 根据实际容量设置
+//擦除一个扇区的最少时间:150ms
+void W25QXX_Erase_Sector(uint32_t Dst_Addr)
+{
+	//监视falsh擦除情况,测试用
+	//printf("fe:%x\r\n",Dst_Addr);
+	Dst_Addr *= 4096;
+	W25QXX_Write_Enable(); //SET WEL
+	W25QXX_Wait_Busy();
+	W25QXX_CS(0);					  //使能器件
+	SPIx_ReadWriteByte(W25X_SectorErase); //发送扇区擦除指令
+	if (W25QXX_TYPE == W25Q256)		  //如果是W25Q256的话地址为4字节的，要发送最高8位
+	{
+		SPIx_ReadWriteByte((uint8_t)((Dst_Addr) >> 24));
 	}
-
-	for (uint8_t i = 0; i < 4; i++)	//低32位
-			{
-		Temp = SPI_ReceiveOneByte();
-		Low = (Low << 8);
-		Low = Low | Temp;  //按位或
-	}
-	__Deselect_Flash();	//CS=1
-
-	*High32 = High;
-	*Low32 = Low;
-
-	SerialNum = High;
-	SerialNum = SerialNum << 32;  //高32位
-	SerialNum = SerialNum | Low;
-
-	return SerialNum;
+	SPIx_ReadWriteByte((uint8_t)((Dst_Addr) >> 16)); //发送24bit地址
+	SPIx_ReadWriteByte((uint8_t)((Dst_Addr) >> 8));
+	SPIx_ReadWriteByte((uint8_t)Dst_Addr);
+	W25QXX_CS(1);		//取消片选
+	W25QXX_Wait_Busy(); //等待擦除完成
 }
-
-//在任意地址读取一个字节的数据,返回读取的字节数据
-// globalAddr是24位全局地址
-uint8_t Flash_ReadOneByte(uint32_t globalAddr) {
-	uint8_t byte2, byte3, byte4;
-	Flash_SpliteAddr(globalAddr, &byte2, &byte3, &byte4);	//24位地址分解为3个字节
-
-	__Select_Flash();	//CS=0
-	SPI_TransmitOneByte(0x03);      //Command=0x03, read data
-	SPI_TransmitOneByte(byte2);		//发送24位地址
-	SPI_TransmitOneByte(byte3);
-	SPI_TransmitOneByte(byte4);
-	byte2 = SPI_ReceiveOneByte();	//接收1个字节
-	__Deselect_Flash();	//CS=1
-
-	return byte2;
+//等待空闲
+void W25QXX_Wait_Busy(void)
+{
+	while ((W25QXX_ReadSR(1) & 0x01) == 0x01)
+		; // 等待BUSY位清空
 }
-
-//从任何地址开始读取指定长度的数据
-//globalAddr：开始读取的地址(24bit)， pBuffer：数据存储区指针，byteCount:要读取的字节数
-void Flash_ReadBytes(uint32_t globalAddr, uint8_t *pBuffer, uint16_t byteCount) {
-	uint8_t byte2, byte3, byte4;
-	Flash_SpliteAddr(globalAddr, &byte2, &byte3, &byte4);	//24位地址分解为3个字节
-
-	__Select_Flash();	//CS=0
-	SPI_TransmitOneByte(0x03);      //Command=0x03, read data
-	SPI_TransmitOneByte(byte2);		//发送24位地址
-	SPI_TransmitOneByte(byte3);
-	SPI_TransmitOneByte(byte4);
-	SPI_ReceiveBytes(pBuffer, byteCount);	//接收byteCount个字节数据
-	__Deselect_Flash();	//CS=1
-}
-
-//Command=0x0B,  高速连续读取flash多个字节，任意全局地址， 速度大约是常规读取的2倍
-void Flash_FastReadBytes(uint32_t globalAddr, uint8_t *pBuffer,
-		uint16_t byteCount) {
-// 	uint16_t i;
-	uint8_t byte2, byte3, byte4;
-	Flash_SpliteAddr(globalAddr, &byte2, &byte3, &byte4);	//24位地址分解为3个字节
-
-	__Select_Flash();	//CS=0
-
-	SPI_TransmitOneByte(0x0B);      //Command=0x0B, fast read data
-	SPI_TransmitOneByte(byte2);		//发送24位地址
-	SPI_TransmitOneByte(byte3);
-	SPI_TransmitOneByte(byte4);
-	SPI_TransmitOneByte(0x00);		//Dummy字节
-
-	SPI_ReceiveBytes(pBuffer, byteCount);	//接收byteCount个字节数据
-	__Deselect_Flash();	//CS=1
-
-}
-
-//Command=0xC7: Chip Erase, 擦除整个器件
-// 擦除后，所有存储区内容为0xFF,耗时大约25秒
-void Flash_EraseChip(void) {
-	Flash_Write_Enable();   //使 WEL=1
-	Flash_Wait_Busy();   	//等待空闲
-
-	__Select_Flash();		//CS=0
-	SPI_TransmitOneByte(0xC7);  // Command=0xC7: Chip Erase, 擦除整个器件
-	__Deselect_Flash();		//CS=1
-
-	Flash_Wait_Busy();   //等待芯片擦除结束,大约25秒
-}
-
-// Command=0x02: Page program, 对一个页（256字节）编程, 耗时大约3ms,
-// globalAddr是写入初始地址，全局地址
-// pBuffer是要写入数据缓冲区指针，byteCount是需要写入的数据字节数
-// 写入的Page必须是前面已经擦除过的，如果写入地址超出了page的边界，就从Page的开头重新写
-void Flash_WriteInPage(uint32_t globalAddr, uint8_t *pBuffer,
-		uint16_t byteCount) {
-	uint8_t byte2, byte3, byte4;
-	Flash_SpliteAddr(globalAddr, &byte2, &byte3, &byte4);	//24位地址分解为3个字节
-
-	Flash_Write_Enable();   //SET WEL
-	Flash_Wait_Busy();
-
-	__Select_Flash();	//CS=0
-	SPI_TransmitOneByte(0x02);      //Command=0x02: Page program 对一个扇区编程
-	SPI_TransmitOneByte(byte2);	//发送24位地址
-	SPI_TransmitOneByte(byte3);
-	SPI_TransmitOneByte(byte4);
-	SPI_TransmitBytes(pBuffer, byteCount); 		//发送byteCount个字节的数据
-//	for(uint16_t i=0; i<byteCount; i++)
-//	{
-//		byte2=pBuffer[i];
-//		SPI_WriteOneByte(byte2);	//要写入的数据
-//	}
-	__Deselect_Flash();	//CS=1
-
-	Flash_Wait_Busy(); 	   //耗时大约3ms
-}
-
-//从某个Sector的起始位置开始写数据，数据可能跨越多个Page,甚至跨越Sector,不必提前擦除
-// globalAddr是写入初始地址，全局地址,是扇区的起始地址，
-// pBuffer是要写入数据缓冲区指针
-// byteCount是需要写入的数据字节数，byteCount不能超过64K，也就是一个Block（16个扇区）的大小,但是可以超过一个Sector(4K字节)
-// 如果数据超过一个Page，自动分成多个Page，调用EN25Q_WriteInPage分别写入
-void Flash_WriteSector(uint32_t globalAddr, const uint8_t *pBuffer,
-		uint16_t byteCount) {
-//需要先擦除扇区，可能是重复写文件
-	uint8_t secCount = (byteCount / FLASH_SECTOR_SIZE);	//数据覆盖的扇区个数
-	if ((byteCount % FLASH_SECTOR_SIZE) > 0)
-		secCount++;
-
-	uint32_t startAddr = globalAddr;
-	for (uint8_t k = 0; k < secCount; k++) {
-		Flash_EraseSector(startAddr);	//擦除扇区
-		startAddr += FLASH_SECTOR_SIZE;	//移到下一个扇区
-	}
-
-//分成Page写入数据,写入数据的最小单位是Page
-	uint16_t leftBytes = byteCount % FLASH_PAGE_SIZE; //非整数个Page剩余的字节数，即最后一个Page写入的数据
-	uint16_t pgCount = byteCount / FLASH_PAGE_SIZE;  //前面整数个Page
-	uint8_t *buff = pBuffer;
-	for (uint16_t i = 0; i < pgCount; i++)	//写入前面pgCount个Page的数据，
-			{
-		Flash_WriteInPage(globalAddr, buff, FLASH_PAGE_SIZE);  //写一整个Page的数据
-		globalAddr += FLASH_PAGE_SIZE;	//地址移动一个Page
-		buff += FLASH_PAGE_SIZE;		//数据指针移动一个Page大小
-	}
-
-	if (leftBytes > 0)
-		Flash_WriteInPage(globalAddr, buff, leftBytes);  //最后一个Page，不是一整个Page的数据
-}
-
-//Command=0xD8: Block Erase(64KB) 擦除整个Block, globalAddr是全局地址
-//清除后存储区内容全部为0xFF,  耗时大概150ms
-void Flash_EraseBlock64K(uint32_t globalAddr) {
-	Flash_Write_Enable();   //SET WEL
-	Flash_Wait_Busy();
-
-	uint8_t byte2, byte3, byte4;
-	Flash_SpliteAddr(globalAddr, &byte2, &byte3, &byte4);	//24位地址分解为3个字节
-
-	__Select_Flash();	//CS=0
-
-	SPI_TransmitOneByte(0xD8);      //Command=0xD8, Block Erase(64KB)
-	SPI_TransmitOneByte(byte2);	//发送24位地址
-	SPI_TransmitOneByte(byte3);
-	SPI_TransmitOneByte(byte4);
-
-	__Deselect_Flash();	//CS=1
-	Flash_Wait_Busy(); 	   //耗时大概150ms
-}
-
-//擦除一个扇区(4KB字节)，Command=0x20, Sector Erase(4KB)
-//globalAddr: 扇区的绝对地址，24位地址0x00XXXXXX
-//擦除后，扇区内全部内容为0xFF, 耗时大约30ms，
-void Flash_EraseSector(uint32_t globalAddr) {
-	Flash_Write_Enable();   //SET WEL
-	Flash_Wait_Busy();
-	uint8_t byte2, byte3, byte4;
-	Flash_SpliteAddr(globalAddr, &byte2, &byte3, &byte4);	//24位地址分解为3个字节
-
-	__Select_Flash();	//CS=0
-
-	SPI_TransmitOneByte(0x20);      //Command=0x20, Sector Erase(4KB)
-	SPI_TransmitOneByte(byte2);		//发送24位地址
-	SPI_TransmitOneByte(byte3);
-	SPI_TransmitOneByte(byte4);
-
-	__Deselect_Flash();		//CS=1
-	Flash_Wait_Busy(); 	   //大约30ms
-}
-
-//检查寄存器SR1的BUSY位，直到BUSY位为0
-uint32_t Flash_Wait_Busy(void) {
-	uint8_t SR1 = 0;
-	uint32_t delay = 0;
-	SR1 = Flash_ReadSR1();	//读取状态寄存器SR1
-	while ((SR1 & 0x01) == 0x01) {
-		HAL_Delay(1);	//延时1ms
-		delay++;
-		SR1 = Flash_ReadSR1();	//读取状态寄存器SR1
-	}
-	return delay;
-}
-
 //进入掉电模式
-//Command=0xB9: Power Down
-void Flash_PowerDown(void) {
-	__Select_Flash();	//CS=0
-	SPI_TransmitOneByte(0xB9);  //Command=0xB9: Power Down
-	__Deselect_Flash();	//CS=1
-	HAL_Delay(1); //等待TPD
+void W25QXX_PowerDown(void)
+{
+	W25QXX_CS(0);					//使能器件
+	SPIx_ReadWriteByte(W25X_PowerDown); //发送掉电命令
+	W25QXX_CS(1);					//取消片选
+	HAL_Delay(3);					//等待TPD
+}
+//唤醒
+void W25QXX_WAKEUP(void)
+{
+	W25QXX_CS(0);						   //使能器件
+	SPIx_ReadWriteByte(W25X_ReleasePowerDown); //  send W25X_PowerDown command 0xAB
+	W25QXX_CS(1);						   //取消片选
+	HAL_Delay(3);						   //等待TRES1
+}
+uint8_t SPIx_ReadWriteByte(uint8_t TxData)
+{
+    uint8_t Rxdata;
+	#if (USE_DMA)
+	HAL_SPI_TransmitReceive_DMA(&SPI_CH,&TxData,&Rxdata,1);
+	#else
+	HAL_SPI_TransmitReceive(&SPI_CH,&TxData,&Rxdata,1, 1000);
+	#endif
+   	return Rxdata;          		    //返回收到的数据
+}
+void SPIx_WriteByte(uint8_t *pBuffer, uint16_t NumByteToWrite)
+{
+	#if (USE_DMA)
+		HAL_SPI_Transmit_DMA(&SPI_CH, pBuffer, NumByteToWrite);
+	#else
+		HAL_SPI_Transmit(&SPI_CH, pBuffer, NumByteToWrite, 1000);
+	#endif
 }
 
-//唤醒
-//Command=0xAB: Release Power Down
-void Flash_WakeUp(void) {
-	__Select_Flash();	//CS=0
-	SPI_TransmitOneByte(0xAB);		//Command=0xAB: Release Power Down
-	__Deselect_Flash();	//CS=1
-	HAL_Delay(1);     //等待TRES1
+void SPIx_ReadByte(uint8_t *pBuffer, uint16_t NumByteToRead)
+{
+	#if (USE_DMA)
+		HAL_SPI_Receive_DMA(&SPI_CH, pBuffer, NumByteToRead); // DMA channel
+	#else
+		HAL_SPI_Receive(&SPI_CH, pBuffer, NumByteToRead, 1000); //
+	#endif
 }
+

@@ -98,9 +98,6 @@ DSTATUS USER_status (
 {
   /* USER CODE BEGIN STATUS */
     Stat = STA_NOINIT;
-    if (0 != Flash_ReadID()) {
-        Stat &= ~STA_NOINIT;
-    }
     return Stat;
   /* USER CODE END STATUS */
 }
@@ -121,9 +118,6 @@ DRESULT USER_read (
 )
 {
   /* USER CODE BEGIN READ */
-    uint32_t globalAddr = sector * FLASH_SECTOR_SIZE;
-    uint16_t byteCount = count * FLASH_SECTOR_SIZE;
-    Flash_ReadBytes(globalAddr, buff, byteCount);
     return RES_OK;
   /* USER CODE END READ */
 }
@@ -146,9 +140,6 @@ DRESULT USER_write (
 {
   /* USER CODE BEGIN WRITE */
     /* USER CODE HERE */
-    uint32_t globalAddr = sector * FLASH_SECTOR_SIZE;
-    uint16_t byteCount = count * FLASH_SECTOR_SIZE;
-    Flash_WriteSector(globalAddr, buff, byteCount);
     return RES_OK;
   /* USER CODE END WRITE */
 }
@@ -175,15 +166,12 @@ DRESULT USER_ioctl (
             break;
 
         case GET_SECTOR_COUNT:
-            *(DWORD*)buff = FLASH_SECTOR_COUNT;
             break;
 
         case GET_SECTOR_SIZE:
-            *(WORD*)buff = FLASH_SECTOR_SIZE;
             break;
 
         case GET_BLOCK_SIZE:
-            *(WORD*)buff = 16;
             break;
 
         default:

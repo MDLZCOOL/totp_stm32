@@ -176,6 +176,7 @@ int main(void)
   // setup_ui(&guider_ui);
   BLK_ON;
 
+  W25QXX_Init();
   msc_init(0, USB_OTG_FS_PERIPH_BASE);
   // extern void msc_ram_init(uint8_t busid, uintptr_t reg_base);
   // msc_ram_init(0, USB_OTG_FS_PERIPH_BASE);
