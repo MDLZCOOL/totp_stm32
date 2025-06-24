@@ -14,7 +14,7 @@
 //#define GTP_INT_EXTI_IRQ EXTI4_IRQn //
 
 /*I2C¾ä±ú*/
-#define		GT911_I2C			hi2c2
+#define		GT911_I2C			hi2c3
 
 // ´¥ÃþICÉè±¸µØÖ·
 #define GT911_DIV_W 0x28

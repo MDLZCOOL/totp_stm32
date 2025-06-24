@@ -54,7 +54,8 @@ void Error_Handler(void);
 
 /* USER CODE BEGIN EFP */
 extern SPI_HandleTypeDef hspi1;
-extern I2C_HandleTypeDef hi2c2;
+extern SPI_HandleTypeDef hspi2;
+extern I2C_HandleTypeDef hi2c3;
 extern RTC_HandleTypeDef hrtc;
 void SPI1_SetSpeed(uint8_t SpeedSet);
 /* USER CODE END EFP */
@@ -70,10 +71,12 @@ void SPI1_SetSpeed(uint8_t SpeedSet);
 #define LCD_RESET_GPIO_Port GPIOA
 #define LED1_Pin GPIO_PIN_2
 #define LED1_GPIO_Port GPIOB
-#define TP_RESET_Pin GPIO_PIN_14
-#define TP_RESET_GPIO_Port GPIOE
-#define TP_INT_Pin GPIO_PIN_15
-#define TP_INT_GPIO_Port GPIOE
+#define W25Q_CS_Pin GPIO_PIN_15
+#define W25Q_CS_GPIO_Port GPIOE
+#define TP_INT_Pin GPIO_PIN_7
+#define TP_INT_GPIO_Port GPIOC
+#define TP_RESET_Pin GPIO_PIN_8
+#define TP_RESET_GPIO_Port GPIOC
 
 /* USER CODE BEGIN Private defines */
 
