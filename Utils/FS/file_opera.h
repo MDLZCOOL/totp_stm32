@@ -22,6 +22,7 @@ void fatTest_WriteBinFile(TCHAR* filename, uint32_t pointCount, uint32_t sampFre
 void fatTest_ReadTXTFile(TCHAR* filename);
 void fatTest_ReadBinFile(TCHAR* filename);
 void fatTest_GetFileInfo(TCHAR* filename);
+void read_and_parse_data(const char* filename);
 
 DWORD fat_GetFatTimeFromRTC();
 

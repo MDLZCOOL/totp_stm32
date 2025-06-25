@@ -200,16 +200,96 @@ static void usbd_event_handler(uint8_t busid, uint8_t event)
             break;
     }
 }
+/* USB rx ringbuffer */
+#define USB_RX_DATA_SIZE 2048
+uint8_t usb_rxBuffer_cherryusb[USB_RX_DATA_SIZE];
+volatile uint32_t usb_rxBufPtrIn_cherryusb = 0;
+volatile uint32_t usb_rxBufPtrOut_cherryusb = 0;
 
+unsigned char vcp_read_cherryusb(void) {
+    unsigned char c;
+    if (usb_rxBufPtrIn_cherryusb == usb_rxBufPtrOut_cherryusb) {
+        c = -1;
+    } else {
+        c = usb_rxBuffer_cherryusb[usb_rxBufPtrOut_cherryusb];
+        usb_rxBufPtrOut_cherryusb = (usb_rxBufPtrOut_cherryusb + 1) % USB_RX_DATA_SIZE;
+    }
+    return c;
+}
+
+// 当 USB OUT 端点接收到数据时，USB 驱动会调用此函数
 void usbd_cdc_acm_bulk_out(uint8_t busid, uint8_t ep, uint32_t nbytes)
 {
-    USB_LOG_RAW("actual out len:%d\r\n", (unsigned int)nbytes);
-    // for (int i = 0; i < 100; i++) {
-    //     printf("%02x ", read_buffer[i]);
-    // }
-    // printf("\r\n");
+    printf("\r\n--- usbd_cdc_acm_bulk_out called ---\r\n"); // 明确函数入口
+    USB_LOG_RAW("actual out len:%d\r\n", (unsigned int)nbytes); // 打印接收到的字节数
+
+    // 如果没有接收到数据，直接返回
+    if (nbytes == 0) {
+        printf("No data received (nbytes = 0).\r\n");
+        // 仍然需要设置下一个读取传输
+        usbd_ep_start_read(busid, CDC_OUT_EP, usb_rxBuffer_cherryusb, USB_RX_DATA_SIZE);
+        return;
+    }
+
+    // --- 缓冲区空间检查 ---
+    uint32_t current_buffer_free_space;
+    if (usb_rxBufPtrIn_cherryusb >= usb_rxBufPtrOut_cherryusb) {
+        current_buffer_free_space = USB_RX_DATA_SIZE - (usb_rxBufPtrIn_cherryusb - usb_rxBufPtrOut_cherryusb) - 1; // 留一个位置防止in==out被误判为空
+    } else {
+        current_buffer_free_space = (usb_rxBufPtrOut_cherryusb - usb_rxBufPtrIn_cherryusb) - 1;
+    }
+
+    if (nbytes > current_buffer_free_space) {
+        printf("USB RX Buffer Overflow! Discarding %u bytes (Free space: %u).\r\n", (unsigned int)nbytes, (unsigned int)current_buffer_free_space);
+        // 如果发生溢出，不处理这些数据，直接返回或只接受部分。
+        // 这里我们选择丢弃所有。
+        usbd_ep_start_read(busid, CDC_OUT_EP, usb_rxBuffer_cherryusb, USB_RX_DATA_SIZE);
+        return;
+    }
+
+    // --- 打印接收到的原始数据 (十六进制和 ASCII) ---
+    printf("Received data (Hex Dump):\r\n");
+    for (uint32_t i = 0; i < nbytes; i++) {
+        // 计算当前字节在 usb_rxBuffer_cherryusb 中的实际索引
+        // 这里的关键是：数据是直接从 usb_rxBufPtrIn_cherryusb 开始写入的。
+        // 所以我们应该从 usb_rxBufPtrIn_cherryusb 偏移 i 来读取。
+        uint32_t data_index_in_buffer = (usb_rxBufPtrIn_cherryusb + i) % USB_RX_DATA_SIZE;
+        uint8_t byte = usb_rxBuffer_cherryusb[data_index_in_buffer];
+
+        // 打印十六进制值
+        printf("%02X ", byte); // %02X 保证两位十六进制，不足补0
+
+        // 每16个字节换行，方便查看
+        if ((i + 1) % 16 == 0) {
+            printf("\r\n");
+        }
+    }
+    printf("\r\n"); // 确保最后有一个换行
+
+    // 打印可打印的 ASCII 字符（如果数据是文本）
+    printf("Received data (ASCII):\r\n[");
+    for (uint32_t i = 0; i < nbytes; i++) {
+        uint32_t data_index_in_buffer = (usb_rxBufPtrIn_cherryusb + i) % USB_RX_DATA_SIZE;
+        uint8_t byte = usb_rxBuffer_cherryusb[data_index_in_buffer];
+        // 只打印可显示的 ASCII 字符，否则打印 '.'
+        if (byte >= 0x20 && byte <= 0x7E) {
+            printf("%c", byte);
+        } else {
+            printf(".");
+        }
+    }
+    printf("]\r\n");
+
+    // --- 更新 'in' 指针 ---
+    // 只有在数据被成功处理（即没有溢出）后才更新 'in' 指针
+    usb_rxBufPtrIn_cherryusb = (usb_rxBufPtrIn_cherryusb + nbytes) % USB_RX_DATA_SIZE;
+    printf("New usb_rxBufPtrIn_cherryusb: %lu\r\n", usb_rxBufPtrIn_cherryusb);
+
     /* setup next out ep read transfer */
-    usbd_ep_start_read(busid, CDC_OUT_EP, read_buffer, 2048);
+    // 重新启动下一个 OUT 端点读取传输，继续将数据放入 usb_rxBuffer_cherryusb
+    usbd_ep_start_read(busid, CDC_OUT_EP, usb_rxBuffer_cherryusb, USB_RX_DATA_SIZE);
+
+    printf("--- usbd_cdc_acm_bulk_out finished ---\r\n\r\n");
 }
 
 void usbd_cdc_acm_bulk_in(uint8_t busid, uint8_t ep, uint32_t nbytes)
@@ -277,3 +357,4 @@ void cdc_acm_data_send_with_dtr_test(uint8_t busid)
         }
     }
 }
+

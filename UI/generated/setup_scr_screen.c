@@ -411,6 +411,120 @@ void setup_scr_screen(lv_ui *ui)
     lv_style_set_bg_color(&style_screen_list_4_extra_texts_main_default, lv_color_hex(0xffffff));
     lv_style_set_bg_grad_dir(&style_screen_list_4_extra_texts_main_default, LV_GRAD_DIR_NONE);
 
+    //Write codes screen_msgbox_1
+    static const char * screen_msgbox_1_btns[] = {"Done", ""};
+    ui->screen_msgbox_1 = lv_msgbox_create(ui->screen_cont_1, "USB DEVICE MSC", "Please Edit From PC\nOr\nJust Copy account.txt To Disk", screen_msgbox_1_btns, false);
+    lv_obj_set_size(lv_msgbox_get_btns(ui->screen_msgbox_1), 60, 29);
+    lv_obj_set_pos(ui->screen_msgbox_1, 41, 56);
+    lv_obj_set_size(ui->screen_msgbox_1, 394, 229);
+    lv_obj_add_flag(ui->screen_msgbox_1, LV_OBJ_FLAG_HIDDEN);
+
+    //Write style for screen_msgbox_1, Part: LV_PART_MAIN, State: LV_STATE_DEFAULT.
+    lv_obj_set_style_bg_opa(ui->screen_msgbox_1, 255, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_color(ui->screen_msgbox_1, lv_color_hex(0xb7b4b4), LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_grad_dir(ui->screen_msgbox_1, LV_GRAD_DIR_NONE, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_border_width(ui->screen_msgbox_1, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_radius(ui->screen_msgbox_1, 5, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_shadow_width(ui->screen_msgbox_1, 4, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_shadow_color(ui->screen_msgbox_1, lv_color_hex(0x7a7d7f), LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_shadow_opa(ui->screen_msgbox_1, 132, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_shadow_spread(ui->screen_msgbox_1, 5, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_shadow_ofs_x(ui->screen_msgbox_1, 5, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_shadow_ofs_y(ui->screen_msgbox_1, 5, LV_PART_MAIN|LV_STATE_DEFAULT);
+
+    //Write style state: LV_STATE_DEFAULT for &style_screen_msgbox_1_extra_title_main_default
+    static lv_style_t style_screen_msgbox_1_extra_title_main_default;
+    ui_init_style(&style_screen_msgbox_1_extra_title_main_default);
+
+    lv_style_set_text_color(&style_screen_msgbox_1_extra_title_main_default, lv_color_hex(0x4e4e4e));
+    lv_style_set_text_font(&style_screen_msgbox_1_extra_title_main_default, &lv_font_arial_20);
+    lv_style_set_text_opa(&style_screen_msgbox_1_extra_title_main_default, 255);
+    lv_style_set_text_letter_space(&style_screen_msgbox_1_extra_title_main_default, 0);
+    lv_style_set_text_line_space(&style_screen_msgbox_1_extra_title_main_default, 0);
+    lv_obj_add_style(lv_msgbox_get_title(ui->screen_msgbox_1), &style_screen_msgbox_1_extra_title_main_default, LV_PART_MAIN|LV_STATE_DEFAULT);
+
+    //Write style state: LV_STATE_DEFAULT for &style_screen_msgbox_1_extra_content_main_default
+    static lv_style_t style_screen_msgbox_1_extra_content_main_default;
+    ui_init_style(&style_screen_msgbox_1_extra_content_main_default);
+
+    lv_style_set_text_color(&style_screen_msgbox_1_extra_content_main_default, lv_color_hex(0x4e4e4e));
+    lv_style_set_text_font(&style_screen_msgbox_1_extra_content_main_default, &lv_font_arial_19);
+    lv_style_set_text_opa(&style_screen_msgbox_1_extra_content_main_default, 255);
+    lv_style_set_text_letter_space(&style_screen_msgbox_1_extra_content_main_default, 0);
+    lv_style_set_text_line_space(&style_screen_msgbox_1_extra_content_main_default, 0);
+    lv_obj_add_style(lv_msgbox_get_text(ui->screen_msgbox_1), &style_screen_msgbox_1_extra_content_main_default, LV_PART_MAIN|LV_STATE_DEFAULT);
+
+    //Write style state: LV_STATE_DEFAULT for &style_screen_msgbox_1_extra_btns_items_default
+    static lv_style_t style_screen_msgbox_1_extra_btns_items_default;
+    ui_init_style(&style_screen_msgbox_1_extra_btns_items_default);
+
+    lv_style_set_bg_opa(&style_screen_msgbox_1_extra_btns_items_default, 255);
+    lv_style_set_bg_color(&style_screen_msgbox_1_extra_btns_items_default, lv_color_hex(0xdcdcdc));
+    lv_style_set_bg_grad_dir(&style_screen_msgbox_1_extra_btns_items_default, LV_GRAD_DIR_NONE);
+    lv_style_set_border_width(&style_screen_msgbox_1_extra_btns_items_default, 0);
+    lv_style_set_radius(&style_screen_msgbox_1_extra_btns_items_default, 5);
+    lv_style_set_text_color(&style_screen_msgbox_1_extra_btns_items_default, lv_color_hex(0x4e4e4e));
+    lv_style_set_text_font(&style_screen_msgbox_1_extra_btns_items_default, &lv_font_montserratMedium_15);
+    lv_style_set_text_opa(&style_screen_msgbox_1_extra_btns_items_default, 255);
+    lv_obj_add_style(lv_msgbox_get_btns(ui->screen_msgbox_1), &style_screen_msgbox_1_extra_btns_items_default, LV_PART_ITEMS|LV_STATE_DEFAULT);
+
+    //Write codes screen_msgbox_2
+    static const char * screen_msgbox_2_btns[] = {"Done", ""};
+    ui->screen_msgbox_2 = lv_msgbox_create(ui->screen_cont_1, "USB DEVICE CDC ACM", "Please Connect To Upper\n\nWait For Sync", screen_msgbox_2_btns, false);
+    lv_obj_set_size(lv_msgbox_get_btns(ui->screen_msgbox_2), 60, 29);
+    lv_obj_set_pos(ui->screen_msgbox_2, 41, 56);
+    lv_obj_set_size(ui->screen_msgbox_2, 394, 229);
+    lv_obj_add_flag(ui->screen_msgbox_2, LV_OBJ_FLAG_HIDDEN);
+
+    //Write style for screen_msgbox_2, Part: LV_PART_MAIN, State: LV_STATE_DEFAULT.
+    lv_obj_set_style_bg_opa(ui->screen_msgbox_2, 255, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_color(ui->screen_msgbox_2, lv_color_hex(0xb7b4b4), LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_grad_dir(ui->screen_msgbox_2, LV_GRAD_DIR_NONE, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_border_width(ui->screen_msgbox_2, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_radius(ui->screen_msgbox_2, 5, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_shadow_width(ui->screen_msgbox_2, 4, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_shadow_color(ui->screen_msgbox_2, lv_color_hex(0x7a7d7f), LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_shadow_opa(ui->screen_msgbox_2, 132, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_shadow_spread(ui->screen_msgbox_2, 5, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_shadow_ofs_x(ui->screen_msgbox_2, 5, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_shadow_ofs_y(ui->screen_msgbox_2, 5, LV_PART_MAIN|LV_STATE_DEFAULT);
+
+    //Write style state: LV_STATE_DEFAULT for &style_screen_msgbox_2_extra_title_main_default
+    static lv_style_t style_screen_msgbox_2_extra_title_main_default;
+    ui_init_style(&style_screen_msgbox_2_extra_title_main_default);
+
+    lv_style_set_text_color(&style_screen_msgbox_2_extra_title_main_default, lv_color_hex(0x4e4e4e));
+    lv_style_set_text_font(&style_screen_msgbox_2_extra_title_main_default, &lv_font_arial_20);
+    lv_style_set_text_opa(&style_screen_msgbox_2_extra_title_main_default, 255);
+    lv_style_set_text_letter_space(&style_screen_msgbox_2_extra_title_main_default, 0);
+    lv_style_set_text_line_space(&style_screen_msgbox_2_extra_title_main_default, 0);
+    lv_obj_add_style(lv_msgbox_get_title(ui->screen_msgbox_2), &style_screen_msgbox_2_extra_title_main_default, LV_PART_MAIN|LV_STATE_DEFAULT);
+
+    //Write style state: LV_STATE_DEFAULT for &style_screen_msgbox_2_extra_content_main_default
+    static lv_style_t style_screen_msgbox_2_extra_content_main_default;
+    ui_init_style(&style_screen_msgbox_2_extra_content_main_default);
+
+    lv_style_set_text_color(&style_screen_msgbox_2_extra_content_main_default, lv_color_hex(0x4e4e4e));
+    lv_style_set_text_font(&style_screen_msgbox_2_extra_content_main_default, &lv_font_arial_19);
+    lv_style_set_text_opa(&style_screen_msgbox_2_extra_content_main_default, 255);
+    lv_style_set_text_letter_space(&style_screen_msgbox_2_extra_content_main_default, 0);
+    lv_style_set_text_line_space(&style_screen_msgbox_2_extra_content_main_default, 0);
+    lv_obj_add_style(lv_msgbox_get_text(ui->screen_msgbox_2), &style_screen_msgbox_2_extra_content_main_default, LV_PART_MAIN|LV_STATE_DEFAULT);
+
+    //Write style state: LV_STATE_DEFAULT for &style_screen_msgbox_2_extra_btns_items_default
+    static lv_style_t style_screen_msgbox_2_extra_btns_items_default;
+    ui_init_style(&style_screen_msgbox_2_extra_btns_items_default);
+
+    lv_style_set_bg_opa(&style_screen_msgbox_2_extra_btns_items_default, 255);
+    lv_style_set_bg_color(&style_screen_msgbox_2_extra_btns_items_default, lv_color_hex(0xdcdcdc));
+    lv_style_set_bg_grad_dir(&style_screen_msgbox_2_extra_btns_items_default, LV_GRAD_DIR_NONE);
+    lv_style_set_border_width(&style_screen_msgbox_2_extra_btns_items_default, 0);
+    lv_style_set_radius(&style_screen_msgbox_2_extra_btns_items_default, 5);
+    lv_style_set_text_color(&style_screen_msgbox_2_extra_btns_items_default, lv_color_hex(0x4e4e4e));
+    lv_style_set_text_font(&style_screen_msgbox_2_extra_btns_items_default, &lv_font_montserratMedium_15);
+    lv_style_set_text_opa(&style_screen_msgbox_2_extra_btns_items_default, 255);
+    lv_obj_add_style(lv_msgbox_get_btns(ui->screen_msgbox_2), &style_screen_msgbox_2_extra_btns_items_default, LV_PART_ITEMS|LV_STATE_DEFAULT);
+
     //The custom code of screen.
 
 

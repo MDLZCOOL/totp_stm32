@@ -42,6 +42,7 @@
 #include "w25flash.h"
 
 #include "base32.h"
+#include "usbd_core.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -82,6 +83,7 @@ RTC_DateTypeDef sDate;
 uint32_t current_timestamp;
 lv_ui guider_ui;
 uint8_t hmacKey[] = {0x87, 0xa8, 0xfa, 0x14, 0x93, 0x6c, 0x4e, 0x64, 0x91, 0x0e};
+uint8_t testbase32[128] = {0};
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -114,27 +116,75 @@ void update_table(lv_obj_t * obj)
   // row 1
   lv_table_set_cell_value(obj,1,0,"0");
   lv_table_set_cell_value(obj,1,1,"1");
-  lv_table_set_cell_value(obj,1,2,"2");
+  // lv_table_set_cell_value(obj,1,2,"2");
 
   // row 2
   lv_table_set_cell_value(obj,2,0,"0");
   lv_table_set_cell_value(obj,2,1,"1");
-  lv_table_set_cell_value(obj,2,2,"2");
+  // lv_table_set_cell_value(obj,2,2,"2");
 
   // row 3
   lv_table_set_cell_value(obj,3,0,"0");
   lv_table_set_cell_value(obj,3,1,"1");
-  lv_table_set_cell_value(obj,3,2,"2");
+  // lv_table_set_cell_value(obj,3,2,"2");
 
   // row 4
   lv_table_set_cell_value(obj,4,0,"0");
   lv_table_set_cell_value(obj,4,1,"1");
-  lv_table_set_cell_value(obj,4,2,"2");
+  // lv_table_set_cell_value(obj,4,2,"2");
 
   // row 5
   lv_table_set_cell_value(obj,5,0,"0");
   lv_table_set_cell_value(obj,5,1,"1");
-  lv_table_set_cell_value(obj,5,2,"2");
+  // lv_table_set_cell_value(obj,5,2,"2");
+}
+
+
+static void callback_import_account(lv_event_t* event)
+{
+  lv_event_code_t code = lv_event_get_code(event);
+  if (code == LV_EVENT_CLICKED)
+  {
+    printf("callback_import_account\r\n");
+    lv_obj_clear_flag(guider_ui.screen_msgbox_1, LV_OBJ_FLAG_HIDDEN);
+    msc_init(0, USB_OTG_FS_PERIPH_BASE);
+  }
+}
+
+static void callback_close_msc(lv_event_t* event)
+{
+  lv_event_code_t code = lv_event_get_code(event);
+  if (code == LV_EVENT_CLICKED)
+  {
+    printf("callback_close_msc\r\n");
+    read_and_parse_data("0:account.txt");
+    lv_obj_add_flag(guider_ui.screen_msgbox_1, LV_OBJ_FLAG_HIDDEN);
+    usbd_deinitialize(0);
+  }
+}
+
+static void callback_sync_timestamp(lv_event_t* event)
+{
+  lv_event_code_t code = lv_event_get_code(event);
+  if (code == LV_EVENT_CLICKED)
+  {
+    printf("callback_sync_timestamp\r\n");
+    lv_obj_clear_flag(guider_ui.screen_msgbox_2, LV_OBJ_FLAG_HIDDEN);
+    extern void cdc_acm_init(uint8_t busid, uintptr_t reg_base);
+    cdc_acm_init(0, USB_OTG_FS_PERIPH_BASE);
+
+  }
+}
+
+static void callback_close_cdc_acm(lv_event_t* event)
+{
+  lv_event_code_t code = lv_event_get_code(event);
+  if (code == LV_EVENT_CLICKED)
+  {
+    printf("callback_close_cdc_acm\r\n");
+    lv_obj_add_flag(guider_ui.screen_msgbox_2, LV_OBJ_FLAG_HIDDEN);
+    usbd_deinitialize(0);
+  }
 }
 
 /* USER CODE END 0 */
@@ -172,7 +222,7 @@ int main(void)
   MX_SPI1_Init();
   MX_RTC_Init();
   MX_I2C3_Init();
-  // MX_FATFS_Init();
+  MX_FATFS_Init();
   MX_SPI2_Init();
   /* USER CODE BEGIN 2 */
   SEGGER_RTT_Init();
@@ -188,16 +238,25 @@ int main(void)
   setup_ui(&guider_ui);
   BLK_ON;
 
-  update_table(guider_ui.screen_table_1);
-  test_base32();
+  // update_table(guider_ui.screen_table_1);
+
   W25QXX_Init();
-  msc_init(0, USB_OTG_FS_PERIPH_BASE);
+
+  read_and_parse_data("0:account.txt");
+
+  lv_obj_add_event_cb(guider_ui.screen_list_2_item1, callback_import_account, LV_EVENT_CLICKED, NULL);
+  lv_obj_add_event_cb(guider_ui.screen_msgbox_1, callback_close_msc, LV_EVENT_CLICKED, NULL);
+
+  lv_obj_add_event_cb(guider_ui.screen_list_4_item0, callback_sync_timestamp, LV_EVENT_CLICKED, NULL);
+  lv_obj_add_event_cb(guider_ui.screen_msgbox_2, callback_close_cdc_acm, LV_EVENT_CLICKED, NULL);
+
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+
     // current_timestamp = get_current_timestamp_and_datetime(
                                 // &hours, &minutes, &seconds,
                                 // &weekday, &date, &month, &year) - 28800;
@@ -305,6 +364,10 @@ static void MX_RTC_Init(void)
 
   /* USER CODE END RTC_Init 0 */
 
+  RTC_TimeTypeDef sTime = {0};
+  RTC_DateTypeDef sDate = {0};
+  RTC_AlarmTypeDef sAlarm = {0};
+
   /* USER CODE BEGIN RTC_Init 1 */
 
   /* USER CODE END RTC_Init 1 */
@@ -319,6 +382,50 @@ static void MX_RTC_Init(void)
   hrtc.Init.OutPutPolarity = RTC_OUTPUT_POLARITY_HIGH;
   hrtc.Init.OutPutType = RTC_OUTPUT_TYPE_OPENDRAIN;
   if (HAL_RTC_Init(&hrtc) != HAL_OK)
+  {
+    Error_Handler();
+  }
+
+  /* USER CODE BEGIN Check_RTC_BKUP */
+
+  /* USER CODE END Check_RTC_BKUP */
+
+  /** Initialize RTC and set the Time and Date
+  */
+  sTime.Hours = 0x0;
+  sTime.Minutes = 0x0;
+  sTime.Seconds = 0x0;
+  sTime.DayLightSaving = RTC_DAYLIGHTSAVING_NONE;
+  sTime.StoreOperation = RTC_STOREOPERATION_RESET;
+  if (HAL_RTC_SetTime(&hrtc, &sTime, RTC_FORMAT_BCD) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sDate.WeekDay = RTC_WEEKDAY_MONDAY;
+  sDate.Month = RTC_MONTH_JANUARY;
+  sDate.Date = 0x1;
+  sDate.Year = 0x0;
+
+  if (HAL_RTC_SetDate(&hrtc, &sDate, RTC_FORMAT_BCD) != HAL_OK)
+  {
+    Error_Handler();
+  }
+
+  /** Enable the Alarm A
+  */
+  sAlarm.AlarmTime.Hours = 0x0;
+  sAlarm.AlarmTime.Minutes = 0x0;
+  sAlarm.AlarmTime.Seconds = 0x1;
+  sAlarm.AlarmTime.SubSeconds = 0x0;
+  sAlarm.AlarmTime.DayLightSaving = RTC_DAYLIGHTSAVING_NONE;
+  sAlarm.AlarmTime.StoreOperation = RTC_STOREOPERATION_RESET;
+  sAlarm.AlarmMask = RTC_ALARMMASK_DATEWEEKDAY|RTC_ALARMMASK_HOURS
+                              |RTC_ALARMMASK_MINUTES;
+  sAlarm.AlarmSubSecondMask = RTC_ALARMSUBSECONDMASK_ALL;
+  sAlarm.AlarmDateWeekDaySel = RTC_ALARMDATEWEEKDAYSEL_DATE;
+  sAlarm.AlarmDateWeekDay = 0x1;
+  sAlarm.Alarm = RTC_ALARM_A;
+  if (HAL_RTC_SetAlarm_IT(&hrtc, &sAlarm, RTC_FORMAT_BCD) != HAL_OK)
   {
     Error_Handler();
   }

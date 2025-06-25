@@ -82,8 +82,8 @@ DSTATUS USER_initialize (
 )
 {
   /* USER CODE BEGIN INIT */
-    Stat = USER_status(pdrv);
-    return Stat;
+  Stat = USER_status(pdrv);
+  return Stat;
   /* USER CODE END INIT */
 }
 
@@ -97,8 +97,11 @@ DSTATUS USER_status (
 )
 {
   /* USER CODE BEGIN STATUS */
-    Stat = STA_NOINIT;
-    return Stat;
+  Stat = STA_NOINIT;
+  if (0 != W25QXX_ReadID()) {
+    Stat &= ~STA_NOINIT;
+  }
+  return Stat;
   /* USER CODE END STATUS */
 }
 
@@ -118,7 +121,10 @@ DRESULT USER_read (
 )
 {
   /* USER CODE BEGIN READ */
-    return RES_OK;
+  uint32_t start_addr = sector * 4096;
+  uint16_t bytes_to_read = count * 4096;
+  W25QXX_Read(buff, start_addr, bytes_to_read);
+  return RES_OK;
   /* USER CODE END READ */
 }
 
@@ -140,7 +146,10 @@ DRESULT USER_write (
 {
   /* USER CODE BEGIN WRITE */
     /* USER CODE HERE */
-    return RES_OK;
+  uint32_t start_addr = sector * 4096;
+  uint16_t bytes_to_write = count * 4096;
+  W25QXX_Write((uint8_t *)buff, start_addr, bytes_to_write);
+  return RES_OK;
   /* USER CODE END WRITE */
 }
 #endif /* _USE_WRITE == 1 */
@@ -166,12 +175,15 @@ DRESULT USER_ioctl (
             break;
 
         case GET_SECTOR_COUNT:
+      *(DWORD *)buff = 4096;
             break;
 
         case GET_SECTOR_SIZE:
+      *(DWORD *)buff = 4096;
             break;
 
         case GET_BLOCK_SIZE:
+      *(DWORD *)buff = 16;
             break;
 
         default:

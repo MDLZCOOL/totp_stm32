@@ -37,6 +37,8 @@ typedef struct
 	lv_obj_t *screen_list_4;
 	lv_obj_t *screen_list_4_item0;
 	lv_obj_t *screen_list_4_item1;
+	lv_obj_t *screen_msgbox_1;
+	lv_obj_t *screen_msgbox_2;
 }lv_ui;
 
 typedef void (*ui_setup_scr_t)(lv_ui * ui);
@@ -69,6 +71,8 @@ LV_FONT_DECLARE(lv_font_arial_28)
 LV_FONT_DECLARE(lv_font_montserratMedium_16)
 LV_FONT_DECLARE(lv_font_montserratMedium_15)
 LV_FONT_DECLARE(lv_font_montserratMedium_12)
+LV_FONT_DECLARE(lv_font_arial_20)
+LV_FONT_DECLARE(lv_font_arial_19)
 
 
 #ifdef __cplusplus

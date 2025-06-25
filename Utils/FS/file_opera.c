@@ -9,6 +9,8 @@
   */
 #include "file_opera.h"
 
+#include "gui_guider.h"
+
 void fatTest_GetDiskInfo() {
     FATFS *fs;
     DWORD free_clust;
@@ -207,5 +209,87 @@ DWORD fat_GetFatTimeFromRTC() {
         return fatTime;
     } else {
         return 0;
+    }
+}
+
+#define MAX_LINE_LEN 128
+#define MAX_NAME_LEN 32
+#define MAX_CODE_LEN 16
+#define MAX_ENTRIES  10
+
+typedef struct {
+    char name[MAX_NAME_LEN];
+    char code[MAX_CODE_LEN];
+} EntryData_t;
+
+EntryData_t dataEntries[MAX_ENTRIES];
+int numEntries = 0;
+
+void read_and_parse_data(const char* filename) {
+    FATFS fs;
+    FIL fil;
+    FRESULT fr;
+    char lineBuffer[MAX_LINE_LEN];
+    char *token;
+    char *saveptr;
+
+    numEntries = 0;
+    fr = f_mount(&fs, "0:", 1);
+    if (fr != FR_OK) {
+        printf("文件系统挂载失败 (%d)\r\n", fr);
+        return;
+    }
+    fr = f_open(&fil, filename, FA_READ);
+    if (fr != FR_OK) {
+        printf("文件打开失败 (%d)\r\n", fr);
+        f_mount(0, "0:", 0);
+        return;
+    }
+    while (f_gets(lineBuffer, sizeof(lineBuffer), &fil) && numEntries < MAX_ENTRIES) {
+        size_t len = strlen(lineBuffer);
+        if (len > 0 && (lineBuffer[len-1] == '\n' || lineBuffer[len-1] == '\r')) {
+            lineBuffer[len-1] = '\0';
+            if (len > 1 && (lineBuffer[len-2] == '\n' || lineBuffer[len-2] == '\r')) {
+                lineBuffer[len-2] = '\0';
+            }
+        }
+        if (strlen(lineBuffer) == 0) {
+            continue;
+        }
+        token = strtok_r(lineBuffer, ",", &saveptr);
+        if (token != NULL) {
+            strncpy(dataEntries[numEntries].name, token, MAX_NAME_LEN - 1);
+            dataEntries[numEntries].name[MAX_NAME_LEN - 1] = '\0';
+            token = strtok_r(NULL, ",", &saveptr);
+            if (token != NULL) {
+                strncpy(dataEntries[numEntries].code, token, MAX_CODE_LEN - 1);
+                dataEntries[numEntries].code[MAX_CODE_LEN - 1] = '\0';
+            } else {
+                dataEntries[numEntries].code[0] = '\0';
+            }
+            numEntries++;
+        }
+    }
+
+    f_close(&fil);
+
+    f_mount(0, "0:", 0);
+
+    printf("成功读取并解析了 %d 条数据:\r\n", numEntries);
+    for (int i = 0; i < numEntries; i++) {
+        printf("Entry %d: Name=%s, Code=%s\r\n", i, dataEntries[i].name, dataEntries[i].code);
+    }
+
+    // Update LVGL table with read data
+    // Assuming row 0 is for headers, so data starts from row 1
+    for (int i = 0; i < numEntries; i++) {
+        // Ensure we don't go beyond the table's capacity or MAX_ENTRIES
+        if (i + 1 < lv_table_get_row_cnt(guider_ui.screen_table_1)) {
+            lv_table_set_cell_value(guider_ui.screen_table_1, i + 1, 0, dataEntries[i].name);
+            lv_table_set_cell_value(guider_ui.screen_table_1, i + 1, 1, dataEntries[i].code);
+        } else {
+            printf("Warning: Not enough rows in LVGL table to display all data entries.\r\n");
+            break; // Stop if no more rows are available in the table
+        }
     }
 }

@@ -22,7 +22,11 @@
 #include "stm32f4xx_it.h"
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include <stdio.h>
+
+#include "gui_guider.h"
 #include "lv_hal_tick.h"
+#include "lv_table.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -52,10 +56,14 @@
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-
+void HAL_RTC_AlarmAEventCallback(RTC_HandleTypeDef *hrtc)
+{
+  printf("HAL_RTC_AlarmAEventCallback\r\n");
+}
 /* USER CODE END 0 */
 
 /* External variables --------------------------------------------------------*/
+extern RTC_HandleTypeDef hrtc;
 extern DMA_HandleTypeDef hdma_spi1_rx;
 extern DMA_HandleTypeDef hdma_spi1_tx;
 extern PCD_HandleTypeDef hpcd_USB_OTG_FS;
@@ -202,6 +210,25 @@ void SysTick_Handler(void)
 /******************************************************************************/
 
 /**
+  * @brief This function handles RTC alarms A and B interrupt through EXTI line 17.
+  */
+void RTC_Alarm_IRQHandler(void)
+{
+  /* USER CODE BEGIN RTC_Alarm_IRQn 0 */
+
+  /* USER CODE END RTC_Alarm_IRQn 0 */
+  HAL_RTC_AlarmIRQHandler(&hrtc);
+  /* USER CODE BEGIN RTC_Alarm_IRQn 1 */
+  printf("RTC_Alarm_IRQHandler\r\n");
+  lv_table_set_cell_value(guider_ui.screen_table_1,1,2,"2");
+  lv_table_set_cell_value(guider_ui.screen_table_1,2,2,"2");
+  lv_table_set_cell_value(guider_ui.screen_table_1,3,2,"2");
+  lv_table_set_cell_value(guider_ui.screen_table_1,4,2,"2");
+  lv_table_set_cell_value(guider_ui.screen_table_1,5,2,"2");
+  /* USER CODE END RTC_Alarm_IRQn 1 */
+}
+
+/**
   * @brief This function handles DMA2 stream0 global interrupt.
   */
 void DMA2_Stream0_IRQHandler(void)
@@ -235,11 +262,9 @@ void DMA2_Stream3_IRQHandler(void)
 // void OTG_FS_IRQHandler(void)
 // {
 //   /* USER CODE BEGIN OTG_FS_IRQn 0 */
-// // // // // // // // //
 //   /* USER CODE END OTG_FS_IRQn 0 */
 //   HAL_PCD_IRQHandler(&hpcd_USB_OTG_FS);
 //   /* USER CODE BEGIN OTG_FS_IRQn 1 */
-// // // // // // // // //
 //   /* USER CODE END OTG_FS_IRQn 1 */
 // }
 
