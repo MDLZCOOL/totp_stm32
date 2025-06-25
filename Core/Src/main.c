@@ -190,6 +190,20 @@ static void callback_close_cdc_acm(lv_event_t* event)
   }
 }
 
+uint32_t struct_time_timestamp(Time_s *time)
+{
+  struct tm t;
+
+  t.tm_year = time->year + 2000 - 1900;
+  t.tm_mon = time->month;
+  t.tm_mday = time->date;
+  t.tm_hour = time->hour;
+  t.tm_min = time->min;
+  t.tm_sec = time->sec;
+
+  return mktime(&t);
+}
+
 /* USER CODE END 0 */
 
 /**
@@ -289,13 +303,10 @@ int main(void)
       extern void usb_transmit_string(uint8_t *data, int32_t length);
       usb_transmit_string("ok\r\n", 6);
     }
-    // printf("Current time: %d/%d/%d %d:%d:%d\r\n", systemTime.date, systemTime.month, systemTime.year, systemTime.hour, systemTime.min, systemTime.sec);
-    // current_timestamp = get_current_timestamp_and_datetime(
-                                // &hours, &minutes, &seconds,
-                                // &weekday, &date, &month, &year) - 28800;
-    // uint32_t code = getCodeFromSteps(current_timestamp / 30);
-    // SEGGER_RTT_printf(0, "Current Unix Timestamp: %lu\r\n", current_timestamp);
-    // SEGGER_RTT_printf(0, "Current Code: %lu\r\n", code);
+    current_timestamp = struct_time_timestamp(&systemTime) - (uint32_t) 2620801;
+    uint32_t code = getCodeFromSteps(current_timestamp / 30);
+    SEGGER_RTT_printf(0, "Current Unix Timestamp: %lu\r\n", current_timestamp);
+    SEGGER_RTT_printf(0, "Current Code: %lu\r\n", code);
     // SEGGER_RTT_printf(0, "alive\r\n");
     lv_timer_handler();
     /* USER CODE END WHILE */
