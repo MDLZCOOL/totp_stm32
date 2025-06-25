@@ -27,6 +27,7 @@ extern "C" {
 #endif
 
 /* Includes ------------------------------------------------------------------*/
+#include "ds1302.h"
 #include "stm32f4xx_hal.h"
 
 /* Private includes ----------------------------------------------------------*/
@@ -57,10 +58,20 @@ extern SPI_HandleTypeDef hspi1;
 extern SPI_HandleTypeDef hspi2;
 extern I2C_HandleTypeDef hi2c3;
 extern RTC_HandleTypeDef hrtc;
+extern Time_s syncTime;
+extern Time_s systemTime;
+extern int sync_state; // 0 refer OK, 1 refer fail
+extern int err_times;
 void SPI1_SetSpeed(uint8_t SpeedSet);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
+#define DS1302_SCK_Pin GPIO_PIN_4
+#define DS1302_SCK_GPIO_Port GPIOE
+#define DS1302_IO_Pin GPIO_PIN_5
+#define DS1302_IO_GPIO_Port GPIOE
+#define DS1302_CE_Pin GPIO_PIN_6
+#define DS1302_CE_GPIO_Port GPIOE
 #define LCD_PWR_Pin GPIO_PIN_1
 #define LCD_PWR_GPIO_Port GPIOA
 #define LCD_CS_Pin GPIO_PIN_2

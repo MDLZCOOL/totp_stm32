@@ -33,7 +33,6 @@
 
 #include "TOTP.h"
 #include <time.h>
-#include "rtc_utils.h"
 
 #include "app_usb_msc.h"
 #include "ffconf.h"
@@ -42,6 +41,7 @@
 #include "w25flash.h"
 
 #include "base32.h"
+#include "ds1302.h"
 #include "usbd_core.h"
 /* USER CODE END Includes */
 
@@ -84,6 +84,10 @@ uint32_t current_timestamp;
 lv_ui guider_ui;
 uint8_t hmacKey[] = {0x87, 0xa8, 0xfa, 0x14, 0x93, 0x6c, 0x4e, 0x64, 0x91, 0x0e};
 uint8_t testbase32[128] = {0};
+Time_s syncTime = {.clockSystem = DS1302_CLK_SYSTEM_24};
+Time_s systemTime = {.clockSystem = DS1302_CLK_SYSTEM_24};
+int sync_state = 3; // 0 refer OK, 1 refer fail, 3 refer init
+int err_times = 0;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -172,7 +176,6 @@ static void callback_sync_timestamp(lv_event_t* event)
     lv_obj_clear_flag(guider_ui.screen_msgbox_2, LV_OBJ_FLAG_HIDDEN);
     extern void cdc_acm_init(uint8_t busid, uintptr_t reg_base);
     cdc_acm_init(0, USB_OTG_FS_PERIPH_BASE);
-
   }
 }
 
@@ -228,7 +231,8 @@ int main(void)
   SEGGER_RTT_Init();
   SEGGER_RTT_printf(0, "System begin...\r\n");
 
-  set_rtc_time_and_date(22, 57, 10, RTC_WEEKDAY_MONDAY, 23, RTC_MONTH_JUNE, 2025);
+  ds1302_init();
+
   TOTP(hmacKey, 10, 30);
 
   BLK_OFF;
@@ -237,8 +241,6 @@ int main(void)
   lv_port_indev_init();
   setup_ui(&guider_ui);
   BLK_ON;
-
-  // update_table(guider_ui.screen_table_1);
 
   W25QXX_Init();
 
@@ -249,14 +251,45 @@ int main(void)
 
   lv_obj_add_event_cb(guider_ui.screen_list_4_item0, callback_sync_timestamp, LV_EVENT_CLICKED, NULL);
   lv_obj_add_event_cb(guider_ui.screen_msgbox_2, callback_close_cdc_acm, LV_EVENT_CLICKED, NULL);
-
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+    ds1302_get_time(&systemTime);
+    if (systemTime.sec >= 30)
+    {
+      char tmp[16] = {0};
+      sprintf(tmp, "%d", 60 - systemTime.sec);
+      lv_table_set_cell_value(guider_ui.screen_table_1, 1, 2, tmp);
+      lv_table_set_cell_value(guider_ui.screen_table_1, 2, 2, tmp);
+      lv_table_set_cell_value(guider_ui.screen_table_1, 3, 2, tmp);
+      lv_table_set_cell_value(guider_ui.screen_table_1, 4, 2, tmp);
+      lv_table_set_cell_value(guider_ui.screen_table_1, 5, 2, tmp);
+    }else
+    {
+      char tmp[16] = {0};
+      sprintf(tmp, "%d",30 - systemTime.sec);
+      lv_table_set_cell_value(guider_ui.screen_table_1, 1, 2, tmp);
+      lv_table_set_cell_value(guider_ui.screen_table_1, 2, 2, tmp);
+      lv_table_set_cell_value(guider_ui.screen_table_1, 3, 2, tmp);
+      lv_table_set_cell_value(guider_ui.screen_table_1, 4, 2, tmp);
+      lv_table_set_cell_value(guider_ui.screen_table_1, 5, 2, tmp);
+    }
 
+    if (sync_state == 1 && err_times == 0)
+    {
+      err_times = 1;
+      extern void usb_transmit_string(uint8_t *data, int32_t length);
+      usb_transmit_string("fail\r\n", 6);
+    }else if (sync_state == 0 && err_times == 0)
+    {
+      err_times = 1;
+      extern void usb_transmit_string(uint8_t *data, int32_t length);
+      usb_transmit_string("ok\r\n", 6);
+    }
+    // printf("Current time: %d/%d/%d %d:%d:%d\r\n", systemTime.date, systemTime.month, systemTime.year, systemTime.hour, systemTime.min, systemTime.sec);
     // current_timestamp = get_current_timestamp_and_datetime(
                                 // &hours, &minutes, &seconds,
                                 // &weekday, &date, &month, &year) - 28800;
@@ -577,11 +610,14 @@ static void MX_GPIO_Init(void)
 /* USER CODE END MX_GPIO_Init_1 */
 
   /* GPIO Ports Clock Enable */
+  __HAL_RCC_GPIOE_CLK_ENABLE();
+  __HAL_RCC_GPIOC_CLK_ENABLE();
   __HAL_RCC_GPIOH_CLK_ENABLE();
   __HAL_RCC_GPIOA_CLK_ENABLE();
   __HAL_RCC_GPIOB_CLK_ENABLE();
-  __HAL_RCC_GPIOE_CLK_ENABLE();
-  __HAL_RCC_GPIOC_CLK_ENABLE();
+
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(GPIOE, DS1302_SCK_Pin|DS1302_IO_Pin|DS1302_CE_Pin|W25Q_CS_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOA, LCD_PWR_Pin|LCD_CS_Pin|LCD_DC_Pin|LCD_RESET_Pin, GPIO_PIN_RESET);
@@ -590,10 +626,14 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_WritePin(LED1_GPIO_Port, LED1_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(W25Q_CS_GPIO_Port, W25Q_CS_Pin, GPIO_PIN_RESET);
-
-  /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOC, TP_INT_Pin|TP_RESET_Pin, GPIO_PIN_RESET);
+
+  /*Configure GPIO pins : DS1302_SCK_Pin DS1302_IO_Pin DS1302_CE_Pin */
+  GPIO_InitStruct.Pin = DS1302_SCK_Pin|DS1302_IO_Pin|DS1302_CE_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOE, &GPIO_InitStruct);
 
   /*Configure GPIO pins : LCD_PWR_Pin LCD_CS_Pin LCD_DC_Pin LCD_RESET_Pin */
   GPIO_InitStruct.Pin = LCD_PWR_Pin|LCD_CS_Pin|LCD_DC_Pin|LCD_RESET_Pin;

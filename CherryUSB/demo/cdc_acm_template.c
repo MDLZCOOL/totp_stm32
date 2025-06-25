@@ -3,8 +3,10 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
+#include "ds1302.h"
 #include "usbd_core.h"
 #include "usbd_cdc_acm.h"
+#include "main.h"
 
 /*!< endpoint address */
 #define CDC_IN_EP  0x81
@@ -200,96 +202,135 @@ static void usbd_event_handler(uint8_t busid, uint8_t event)
             break;
     }
 }
-/* USB rx ringbuffer */
-#define USB_RX_DATA_SIZE 2048
-uint8_t usb_rxBuffer_cherryusb[USB_RX_DATA_SIZE];
-volatile uint32_t usb_rxBufPtrIn_cherryusb = 0;
-volatile uint32_t usb_rxBufPtrOut_cherryusb = 0;
 
-unsigned char vcp_read_cherryusb(void) {
-    unsigned char c;
-    if (usb_rxBufPtrIn_cherryusb == usb_rxBufPtrOut_cherryusb) {
-        c = -1;
-    } else {
-        c = usb_rxBuffer_cherryusb[usb_rxBufPtrOut_cherryusb];
-        usb_rxBufPtrOut_cherryusb = (usb_rxBufPtrOut_cherryusb + 1) % USB_RX_DATA_SIZE;
+int areTimeStructsEqual(const Time_s *time1, const Time_s *time2) {
+    if (time1 == NULL || time2 == NULL) {
+        return 0;
     }
-    return c;
+
+    if (time1->day != time2->day) {
+        return 1; // ���ڼ������
+    }
+    if (time1->sec != time2->sec) {
+        return 1; // �벻���
+    }
+    if (time1->min != time2->min) {
+        return 1; // �ֲ����
+    }
+    if (time1->year != time2->year) {
+        return 1; // �겻���
+    }
+    if (time1->hour != time2->hour) {
+        return 1; // Сʱ�����
+    }
+    if (time1->date != time2->date) {
+        return 1; // �·��е����ڲ����
+    }
+    if (time1->month != time2->month) {
+        return 1; // �²����
+    }
+    if (time1->clockSystem != time2->clockSystem) {
+        return 1; // ʱ��ϵͳ����� (12h/24h)
+    }
+    if (time1->clockPeriod != time2->clockPeriod) {
+        return 1; // AM/PM �����
+    }
+
+    return 0;
 }
 
-// 当 USB OUT 端点接收到数据时，USB 驱动会调用此函数
+void usb_transmit_string(uint8_t *data, int32_t length);
+
 void usbd_cdc_acm_bulk_out(uint8_t busid, uint8_t ep, uint32_t nbytes)
 {
-    printf("\r\n--- usbd_cdc_acm_bulk_out called ---\r\n"); // 明确函数入口
-    USB_LOG_RAW("actual out len:%d\r\n", (unsigned int)nbytes); // 打印接收到的字节数
+    USB_LOG_RAW("actual out len:%d\r\n", nbytes);
 
-    // 如果没有接收到数据，直接返回
-    if (nbytes == 0) {
-        printf("No data received (nbytes = 0).\r\n");
-        // 仍然需要设置下一个读取传输
-        usbd_ep_start_read(busid, CDC_OUT_EP, usb_rxBuffer_cherryusb, USB_RX_DATA_SIZE);
-        return;
+    for (int i = 0; i < nbytes; i++) {
+        printf("%02x ", read_buffer[i]);
     }
-
-    // --- 缓冲区空间检查 ---
-    uint32_t current_buffer_free_space;
-    if (usb_rxBufPtrIn_cherryusb >= usb_rxBufPtrOut_cherryusb) {
-        current_buffer_free_space = USB_RX_DATA_SIZE - (usb_rxBufPtrIn_cherryusb - usb_rxBufPtrOut_cherryusb) - 1; // 留一个位置防止in==out被误判为空
+    printf("\r\n");
+    if (nbytes < sizeof(read_buffer)) {
+        read_buffer[nbytes] = '\0';
     } else {
-        current_buffer_free_space = (usb_rxBufPtrOut_cherryusb - usb_rxBufPtrIn_cherryusb) - 1;
+        USB_LOG_RAW("Warning: read_buffer might not be null-terminated safely for string parsing.\r\n");
+        read_buffer[sizeof(read_buffer) - 1] = '\0';
     }
 
-    if (nbytes > current_buffer_free_space) {
-        printf("USB RX Buffer Overflow! Discarding %u bytes (Free space: %u).\r\n", (unsigned int)nbytes, (unsigned int)current_buffer_free_space);
-        // 如果发生溢出，不处理这些数据，直接返回或只接受部分。
-        // 这里我们选择丢弃所有。
-        usbd_ep_start_read(busid, CDC_OUT_EP, usb_rxBuffer_cherryusb, USB_RX_DATA_SIZE);
-        return;
+    char *endptr;
+    char *str = (char*)read_buffer;
+
+    syncTime.year = (int)strtol(str, &endptr, 10) - 2000;
+    if (str == endptr || *endptr != '/') {
+        printf("�������ʧ�ܻ��ʽ������\r\n");
+        goto parse_error;
+    }
+    str = endptr + 1;
+
+    syncTime.month = (int)strtol(str, &endptr, 10);
+    if (str == endptr || *endptr != '/') {
+        printf("�����·�ʧ�ܻ��ʽ������\r\n");
+        goto parse_error;
+    }
+    str = endptr + 1;
+
+    syncTime.date = (int)strtol(str, &endptr, 10);
+    if (str == endptr || *endptr != ' ') {
+        printf("��������ʧ�ܻ��ʽ������\r\n");
+        goto parse_error;
+    }
+    str = endptr + 1;
+
+    syncTime.hour = (int)strtol(str, &endptr, 10);
+    if (str == endptr || *endptr != ':') {
+        printf("����Сʱʧ�ܻ��ʽ������\r\n");
+        goto parse_error;
+    }
+    str = endptr + 1;
+
+    syncTime.min = (int)strtol(str, &endptr, 10);
+    if (str == endptr || *endptr != ':') {
+        printf("��������ʧ�ܻ��ʽ������\r\n");
+        goto parse_error;
+    }
+    str = endptr + 1;
+
+    syncTime.sec = (int)strtol(str, &endptr, 10);
+    if (str == endptr) {
+        printf("��������ʧ�ܣ�\r\n");
+        goto parse_error;
     }
 
-    // --- 打印接收到的原始数据 (十六进制和 ASCII) ---
-    printf("Received data (Hex Dump):\r\n");
-    for (uint32_t i = 0; i < nbytes; i++) {
-        // 计算当前字节在 usb_rxBuffer_cherryusb 中的实际索引
-        // 这里的关键是：数据是直接从 usb_rxBufPtrIn_cherryusb 开始写入的。
-        // 所以我们应该从 usb_rxBufPtrIn_cherryusb 偏移 i 来读取。
-        uint32_t data_index_in_buffer = (usb_rxBufPtrIn_cherryusb + i) % USB_RX_DATA_SIZE;
-        uint8_t byte = usb_rxBuffer_cherryusb[data_index_in_buffer];
+    // handle sync time
+    systemTime.sec = syncTime.sec;
+    systemTime.min = syncTime.min;
+    systemTime.hour = syncTime.hour;
+    systemTime.date = syncTime.date;
+    systemTime.month = syncTime.month;
+    systemTime.year = syncTime.year;
+    ds1302_set_time(&syncTime);
+    ds1302_set_time(&syncTime);
+    ds1302_get_time(&systemTime);
 
-        // 打印十六进制值
-        printf("%02X ", byte); // %02X 保证两位十六进制，不足补0
-
-        // 每16个字节换行，方便查看
-        if ((i + 1) % 16 == 0) {
-            printf("\r\n");
-        }
+    if (0 == areTimeStructsEqual(&syncTime, &systemTime)) {
+        err_times = 0;
+        printf("OK!\r\n");
+        sync_state = 0;
+    }else {
+        err_times = 0;
+        printf("Time Sync Fail!\r\n");
+        sync_state = 1;
     }
-    printf("\r\n"); // 确保最后有一个换行
 
-    // 打印可打印的 ASCII 字符（如果数据是文本）
-    printf("Received data (ASCII):\r\n[");
-    for (uint32_t i = 0; i < nbytes; i++) {
-        uint32_t data_index_in_buffer = (usb_rxBufPtrIn_cherryusb + i) % USB_RX_DATA_SIZE;
-        uint8_t byte = usb_rxBuffer_cherryusb[data_index_in_buffer];
-        // 只打印可显示的 ASCII 字符，否则打印 '.'
-        if (byte >= 0x20 && byte <= 0x7E) {
-            printf("%c", byte);
-        } else {
-            printf(".");
-        }
-    }
-    printf("]\r\n");
+    printf("Current time: %d/%d/%d %d:%d:%d\r\n", systemTime.date, systemTime.month, systemTime.year, systemTime.hour, systemTime.min, systemTime.sec);
 
-    // --- 更新 'in' 指针 ---
-    // 只有在数据被成功处理（即没有溢出）后才更新 'in' 指针
-    usb_rxBufPtrIn_cherryusb = (usb_rxBufPtrIn_cherryusb + nbytes) % USB_RX_DATA_SIZE;
-    printf("New usb_rxBufPtrIn_cherryusb: %lu\r\n", usb_rxBufPtrIn_cherryusb);
+    goto parse_success;
 
+parse_error:
+    printf("ʱ���ַ������������з�������\r\n");
+
+parse_success:
     /* setup next out ep read transfer */
-    // 重新启动下一个 OUT 端点读取传输，继续将数据放入 usb_rxBuffer_cherryusb
-    usbd_ep_start_read(busid, CDC_OUT_EP, usb_rxBuffer_cherryusb, USB_RX_DATA_SIZE);
-
-    printf("--- usbd_cdc_acm_bulk_out finished ---\r\n\r\n");
+    usbd_ep_start_read(busid, CDC_OUT_EP, read_buffer, 2048);
 }
 
 void usbd_cdc_acm_bulk_in(uint8_t busid, uint8_t ep, uint32_t nbytes)
@@ -358,3 +399,16 @@ void cdc_acm_data_send_with_dtr_test(uint8_t busid)
     }
 }
 
+void usb_transmit_string(uint8_t *data, int32_t length) {
+    if (data == NULL || length <= 0) {
+        return;
+    }
+
+    ep_tx_busy_flag = true;
+    if (usbd_ep_start_write(0, CDC_IN_EP, data, length) == 0) {
+        while (ep_tx_busy_flag) {
+        }
+    } else {
+        ;
+    }
+}

@@ -59,6 +59,39 @@
 void HAL_RTC_AlarmAEventCallback(RTC_HandleTypeDef *hrtc)
 {
   printf("HAL_RTC_AlarmAEventCallback\r\n");
+
+  RTC_AlarmTypeDef sAlarm;
+  RTC_TimeTypeDef sTime;
+  RTC_DateTypeDef sDate;
+
+  // 首先获取当前的RTC时间
+  HAL_RTC_GetTime(hrtc, &sTime, RTC_FORMAT_BIN);
+  HAL_RTC_GetDate(hrtc, &sDate, RTC_FORMAT_BIN); // 获取日期，虽然屏蔽了，但获取完整时间是好习惯
+
+  // 设置闹钟A为当前时间的下一秒
+  sAlarm.Alarm = RTC_ALARM_A;
+  sAlarm.AlarmTime.Hours = sTime.Hours;
+  sAlarm.AlarmTime.Minutes = sTime.Minutes;
+  sAlarm.AlarmTime.Seconds = sTime.Seconds + 1;
+  sAlarm.AlarmTime.DayLightSaving = RTC_DAYLIGHTSAVING_NONE; // 保持不变
+  sAlarm.AlarmTime.StoreOperation = RTC_STOREOPERATION_RESET; // 保持不变
+
+  // 处理秒数溢出
+  if (sAlarm.AlarmTime.Seconds >= 60) {
+    sAlarm.AlarmTime.Seconds = 0;
+  }
+
+  sAlarm.AlarmMask = RTC_ALARMMASK_MINUTES | RTC_ALARMMASK_HOURS | RTC_ALARMMASK_DATEWEEKDAY; // 屏蔽分钟、小时、日期/星期
+  sAlarm.AlarmSubSecondMask = RTC_ALARMSUBSECONDMASK_ALL; // 屏蔽所有亚秒位
+  sAlarm.AlarmDateWeekDaySel = RTC_ALARMDATEWEEKDAYSEL_DATE; // 设置为日期模式，因为屏蔽了不影响
+  sAlarm.AlarmDateWeekDay = sDate.Date; // 设置为当前日期，因为屏蔽了不影响
+
+  // 重新设置闹钟
+  if (HAL_RTC_SetAlarm_IT(hrtc, &sAlarm, RTC_FORMAT_BIN) != HAL_OK)
+  {
+    Error_Handler(); // 错误处理
+  }
+
 }
 /* USER CODE END 0 */
 
@@ -199,6 +232,8 @@ void SysTick_Handler(void)
   HAL_IncTick();
   /* USER CODE BEGIN SysTick_IRQn 1 */
   lv_tick_inc(1);
+
+
   /* USER CODE END SysTick_IRQn 1 */
 }
 
@@ -219,12 +254,7 @@ void RTC_Alarm_IRQHandler(void)
   /* USER CODE END RTC_Alarm_IRQn 0 */
   HAL_RTC_AlarmIRQHandler(&hrtc);
   /* USER CODE BEGIN RTC_Alarm_IRQn 1 */
-  printf("RTC_Alarm_IRQHandler\r\n");
-  lv_table_set_cell_value(guider_ui.screen_table_1,1,2,"2");
-  lv_table_set_cell_value(guider_ui.screen_table_1,2,2,"2");
-  lv_table_set_cell_value(guider_ui.screen_table_1,3,2,"2");
-  lv_table_set_cell_value(guider_ui.screen_table_1,4,2,"2");
-  lv_table_set_cell_value(guider_ui.screen_table_1,5,2,"2");
+
   /* USER CODE END RTC_Alarm_IRQn 1 */
 }
 
