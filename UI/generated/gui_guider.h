@@ -23,23 +23,20 @@ typedef struct
 	lv_obj_t *screen_cont_1;
 	lv_obj_t *screen_img_3;
 	lv_obj_t *screen_img_2;
-	lv_obj_t *screen_img_1;
 	lv_obj_t *screen_label_1;
 	lv_obj_t *screen_table_1;
 	lv_obj_t *screen_list_2;
 	lv_obj_t *screen_list_2_item0;
 	lv_obj_t *screen_list_2_item1;
 	lv_obj_t *screen_list_2_item2;
-	lv_obj_t *screen_list_2_item3;
-	lv_obj_t *screen_list_3;
-	lv_obj_t *screen_list_3_item0;
-	lv_obj_t *screen_list_3_item1;
 	lv_obj_t *screen_list_4;
 	lv_obj_t *screen_list_4_item0;
 	lv_obj_t *screen_list_4_item1;
 	lv_obj_t *screen_msgbox_1;
 	lv_obj_t *screen_msgbox_2;
 	lv_obj_t *screen_label_2;
+	lv_obj_t *screen_ta_1;
+	lv_obj_t *g_kb_top_layer;
 }lv_ui;
 
 typedef void (*ui_setup_scr_t)(lv_ui * ui);
@@ -66,15 +63,14 @@ extern lv_ui guider_ui;
 void setup_scr_screen(lv_ui *ui);
 LV_IMG_DECLARE(_about_alpha_30x30);
 LV_IMG_DECLARE(_menu_alpha_30x30);
-LV_IMG_DECLARE(_add_alpha_35x35);
 
 LV_FONT_DECLARE(lv_font_arial_28)
 LV_FONT_DECLARE(lv_font_montserratMedium_16)
 LV_FONT_DECLARE(lv_font_SourceHanSerifSC_Regular_17)
 LV_FONT_DECLARE(lv_font_montserratMedium_12)
-LV_FONT_DECLARE(lv_font_SourceHanSerifSC_Regular_12)
+LV_FONT_DECLARE(lv_font_arial_12)
 LV_FONT_DECLARE(lv_font_arial_20)
-LV_FONT_DECLARE(lv_font_SourceHanSerifSC_Regular_19)
+LV_FONT_DECLARE(lv_font_SourceHanSerifSC_Regular_18)
 LV_FONT_DECLARE(lv_font_montserratMedium_15)
 LV_FONT_DECLARE(lv_font_SourceHanSerifSC_Regular_16)
 

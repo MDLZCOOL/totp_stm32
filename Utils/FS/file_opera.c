@@ -128,6 +128,52 @@ void fatTest_ReadTXTFile(TCHAR* filename) {
     f_close(&file);
 }
 
+char* fatTest_ReadTXTFile_ret_char(const TCHAR* filename) {
+        FATFS fs;
+        printf("Mounting filesystem...\r\n");
+        FRESULT res = f_mount(&fs, "", 1);  // 挂载文件系统到默认驱动器（""），立即挂载（opt=1）
+
+        if (res != FR_OK) {
+            printf("f_mount failed: %d\r\n", res);
+            return NULL;
+        }
+
+        printf("Reading TXT file: %s\r\n", filename);
+
+        FIL file;
+        res = f_open(&file, filename, FA_READ);
+        if (res != FR_OK) {
+            if (res == FR_NO_FILE)
+                printf("%s does not exist\r\n", filename);
+            else
+                printf("f_open() error: %d\r\n", res);
+            return NULL;
+        }
+
+        char* result = NULL;
+        size_t total_len = 0;
+
+        char line[128];  // 临时缓存一行
+        while (f_gets(line, sizeof(line), &file)) {
+            size_t line_len = strlen(line);
+            char* new_buf = realloc(result, total_len + line_len + 1);  // +1 for null terminator
+            if (!new_buf) {
+                printf("Memory allocation failed\r\n");
+                free(result);
+                f_close(&file);
+                return NULL;
+            }
+            result = new_buf;
+            memcpy(result + total_len, line, line_len);
+            total_len += line_len;
+            result[total_len] = '\0';  // null 结尾
+        }
+
+        f_close(&file);
+        f_mount(0, "0:", 0);
+        return result;
+}
+
 void fatTest_ReadBinFile(TCHAR* filename) {
     printf("Reading BIN file: %s\r\n", filename);
     FIL file;
@@ -163,53 +209,8 @@ void fatTest_ReadBinFile(TCHAR* filename) {
     f_close(&file);
 }
 
-void fatTest_GetFileInfo(TCHAR* filename) {
-    printf("File info of: %s\r\n", filename);
-
-    FILINFO file_info;
-    FRESULT res = f_stat(filename, &file_info);
-    if (res == FR_OK) {
-        printf("File size(bytes)= %d\r\n", file_info.fsize);
-
-        printf("File attribute = 0x%X\r\n", file_info.fattrib);
-
-        printf("File name = %s\r\n", file_info.fname);
-
-        RTC_DateTypeDef sDate;
-        RTC_TimeTypeDef sTime;
-
-        sDate.Date = file_info.fdate & 0x001F;
-        sDate.Month = (file_info.fdate & 0x01E0) >> 5;
-        sDate.Year = 1980 + ((file_info.fdate & 0xFE00) >> 9) - 2000;
-
-        sTime.Hours = (file_info.ftime & 0xF800) >> 11;
-        sTime.Minutes = (file_info.ftime & 0x07E0) >> 5;
-        sTime.Seconds = (file_info.ftime & 0x001F) << 1;
-
-
-        printf("File Date = 20%02d-%02d-%02d\r\n", sDate.Year, sDate.Month, sDate.Date);
-
-        printf("File Time = %02d:%02d:%02d\r\n", sTime.Hours, sTime.Minutes, sTime.Seconds);
-    } else if (res == FR_NO_FILE) {
-        printf("%s does not exist\r\n", filename);
-    } else {
-        printf("f_stat() error\r\n");
-    }
-}
-
 DWORD fat_GetFatTimeFromRTC() {
-    RTC_TimeTypeDef sTime;
-    RTC_DateTypeDef sDate;
-    if (HAL_RTC_GetTime(&hrtc, &sTime, RTC_FORMAT_BIN) == HAL_OK) {
-        HAL_RTC_GetDate(&hrtc, &sDate, RTC_FORMAT_BIN);
-        WORD date = ((2000 + sDate.Year - 1980) << 9) | (sDate.Month << 5) | sDate.Date;
-        WORD time = (sTime.Hours << 11) | (sTime.Minutes << 5) | (sTime.Seconds >> 1);
-
-        DWORD fatTime = ((DWORD)date << 16) | time;
-        return fatTime;
-    } else {
         return 0;
-    }
 }
 
 EntryData_t dataEntries[MAX_ENTRIES];
@@ -229,40 +230,46 @@ void read_and_parse_data(const char* filename) {
         printf("文件系统挂载失败 (%d)\r\n", fr);
         return;
     }
+
     fr = f_open(&fil, filename, FA_READ);
     if (fr != FR_OK) {
         printf("文件打开失败 (%d)\r\n", fr);
         f_mount(0, "0:", 0);
         return;
     }
+
     while (f_gets(lineBuffer, sizeof(lineBuffer), &fil) && numEntries < MAX_ENTRIES) {
         size_t len = strlen(lineBuffer);
-        if (len > 0 && (lineBuffer[len-1] == '\n' || lineBuffer[len-1] == '\r')) {
-            lineBuffer[len-1] = '\0';
-            if (len > 1 && (lineBuffer[len-2] == '\n' || lineBuffer[len-2] == '\r')) {
-                lineBuffer[len-2] = '\0';
-            }
+        while (len > 0 && (lineBuffer[len - 1] == '\n' || lineBuffer[len - 1] == '\r')) {
+            lineBuffer[--len] = '\0';
         }
-        if (strlen(lineBuffer) == 0) {
-            continue;
+
+        if (len == 0) {
+            continue; // 跳过空行
         }
+
         token = strtok_r(lineBuffer, ",", &saveptr);
         if (token != NULL) {
-            strncpy(dataEntries[numEntries].name, token, MAX_NAME_LEN - 1);
-            dataEntries[numEntries].name[MAX_NAME_LEN - 1] = '\0';
+            // 先清空 name 和 code
+            memset(dataEntries[numEntries].name, 0, MAX_NAME_LEN);
+            memset(dataEntries[numEntries].code, 0, MAX_CODE_LEN);
+
+            // 拷贝 name 字段
+            snprintf(dataEntries[numEntries].name, MAX_NAME_LEN, "%s", token);
+
             token = strtok_r(NULL, ",", &saveptr);
             if (token != NULL) {
-                strncpy(dataEntries[numEntries].code, token, MAX_CODE_LEN - 1);
-                dataEntries[numEntries].code[MAX_CODE_LEN - 1] = '\0';
+                // 拷贝 code 字段
+                snprintf(dataEntries[numEntries].code, MAX_CODE_LEN, "%s", token);
             } else {
                 dataEntries[numEntries].code[0] = '\0';
             }
+
             numEntries++;
         }
     }
 
     f_close(&fil);
-
     f_mount(0, "0:", 0);
 
     printf("成功读取并解析了 %d 条数据:\r\n", numEntries);

@@ -16,8 +16,8 @@
 #include "main.h"
 
 #define MAX_LINE_LEN 128
-#define MAX_NAME_LEN 32
-#define MAX_CODE_LEN 17
+#define MAX_NAME_LEN 64
+#define MAX_CODE_LEN 64
 #define MAX_ENTRIES  10
 
 typedef struct {
@@ -36,6 +36,7 @@ void fatTest_ReadTXTFile(TCHAR* filename);
 void fatTest_ReadBinFile(TCHAR* filename);
 void fatTest_GetFileInfo(TCHAR* filename);
 void read_and_parse_data(const char* filename);
+char* fatTest_ReadTXTFile_ret_char(const TCHAR* filename);
 
 DWORD fat_GetFatTimeFromRTC();
 

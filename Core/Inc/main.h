@@ -27,11 +27,11 @@ extern "C" {
 #endif
 
 /* Includes ------------------------------------------------------------------*/
-#include "ds1302.h"
 #include "stm32f4xx_hal.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "ds1302.h"
 
 /* USER CODE END Includes */
 
@@ -57,7 +57,6 @@ void Error_Handler(void);
 extern SPI_HandleTypeDef hspi1;
 extern SPI_HandleTypeDef hspi2;
 extern I2C_HandleTypeDef hi2c3;
-extern RTC_HandleTypeDef hrtc;
 extern Time_s syncTime;
 extern Time_s systemTime;
 extern int sync_state; // 0 refer OK, 1 refer fail

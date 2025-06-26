@@ -65,8 +65,6 @@
 /* Private variables ---------------------------------------------------------*/
 I2C_HandleTypeDef hi2c3;
 
-RTC_HandleTypeDef hrtc;
-
 SPI_HandleTypeDef hspi1;
 SPI_HandleTypeDef hspi2;
 DMA_HandleTypeDef hdma_spi1_rx;
@@ -78,12 +76,15 @@ PCD_HandleTypeDef hpcd_USB_OTG_FS;
 uint8_t hours, minutes, seconds;
 uint8_t weekday, date, month;
 uint16_t year;
-RTC_TimeTypeDef sTime;
-RTC_DateTypeDef sDate;
 lv_ui guider_ui;
 uint8_t hmacKey[] = {0x87, 0xa8, 0xfa, 0x14, 0x93, 0x6c, 0x4e, 0x64, 0x91, 0x0e};
 Time_s syncTime = {.clockSystem = DS1302_CLK_SYSTEM_24};
 Time_s systemTime = {.clockSystem = DS1302_CLK_SYSTEM_24};
+TOTP_Generator generatorA;
+TOTP_Generator generatorB;
+TOTP_Generator generatorC;
+TOTP_Generator generatorD;
+TOTP_Generator generatorE;
 int sync_state = 3; // 0 refer OK, 1 refer fail, 3 refer init
 int err_times = 0;
 /* USER CODE END PV */
@@ -93,7 +94,6 @@ void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_DMA_Init(void);
 static void MX_SPI1_Init(void);
-static void MX_RTC_Init(void);
 static void MX_USB_OTG_FS_PCD_Init(void);
 static void MX_I2C3_Init(void);
 static void MX_SPI2_Init(void);
@@ -103,6 +103,39 @@ static void MX_SPI2_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+void update_table_2fa()
+{
+  printf("%s\r\n", dataEntries[0].code);
+  printf("%s\r\n", dataEntries[1].code);
+  printf("%s\r\n", dataEntries[2].code);
+  printf("%s\r\n", dataEntries[3].code);
+  printf("%s\r\n", dataEntries[4].code);
+
+  int len_hmacKeyA = 0;
+  int len_hmacKeyB = 0;
+  int len_hmacKeyC = 0;
+  int len_hmacKeyD = 0;
+  int len_hmacKeyE = 0;
+
+  uint8_t* hmacKeyA = text_base32_decode_bytes(dataEntries[0].code, &len_hmacKeyA);
+  uint8_t* hmacKeyB = text_base32_decode_bytes(dataEntries[1].code, &len_hmacKeyB);
+  uint8_t* hmacKeyC = text_base32_decode_bytes(dataEntries[2].code, &len_hmacKeyC);
+  uint8_t* hmacKeyD = text_base32_decode_bytes(dataEntries[3].code, &len_hmacKeyD);
+  uint8_t* hmacKeyE = text_base32_decode_bytes(dataEntries[4].code, &len_hmacKeyE);
+
+  printf("len hmacKeyA: %d\r\n", len_hmacKeyA);
+  printf("len hmacKeyB: %d\r\n", len_hmacKeyB);
+  printf("len hmacKeyC: %d\r\n", len_hmacKeyC);
+  printf("len hmacKeyD: %d\r\n", len_hmacKeyD);
+  printf("len hmacKeyE: %d\r\n", len_hmacKeyE);
+
+  initTOTP(&generatorA, hmacKeyA, len_hmacKeyA, 30);
+  initTOTP(&generatorB, hmacKeyB, len_hmacKeyB, 30);
+  initTOTP(&generatorC, hmacKeyC, len_hmacKeyC, 30);
+  initTOTP(&generatorD, hmacKeyD, len_hmacKeyD, 30);
+  initTOTP(&generatorE, hmacKeyE, len_hmacKeyE, 30);
+}
+
 int _write(int file, char* ptr, int len)
 {
   if (file == 1 /* stdout */ || file == 2 /* stderr */)
@@ -160,6 +193,7 @@ static void callback_close_msc(lv_event_t* event)
   {
     printf("callback_close_msc\r\n");
     read_and_parse_data("0:account.txt");
+    update_table_2fa();
     lv_obj_add_flag(guider_ui.screen_msgbox_1, LV_OBJ_FLAG_HIDDEN);
     usbd_deinitialize(0);
   }
@@ -188,6 +222,64 @@ static void callback_close_cdc_acm(lv_event_t* event)
   }
 }
 
+static void callback_manual_edit(lv_event_t* event)
+{
+  lv_event_code_t code = lv_event_get_code(event);
+  if (code == LV_EVENT_CLICKED)
+  {
+    printf("callback_manual_edit\r\n");
+    char* tmp = fatTest_ReadTXTFile_ret_char("0:account.txt");
+    printf("%s\r\n", tmp);
+
+    for (char* p = tmp; *p; p++) {
+      if (*p == '\r') *p = '\n';
+    }
+
+    lv_textarea_set_max_length(guider_ui.screen_ta_1, strlen(tmp) + 1);
+    lv_textarea_set_text(guider_ui.screen_ta_1, tmp);
+
+    lv_obj_clear_flag(guider_ui.screen_ta_1, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_set_scroll_dir(guider_ui.screen_ta_1, LV_DIR_VER);
+  }
+}
+
+static void kb_event_cb(lv_event_t * e)
+{
+  lv_event_code_t code = lv_event_get_code(e);
+  lv_obj_t * kb = lv_event_get_target(e);
+  FATFS fs;
+
+  if(code == LV_EVENT_READY) {
+    const char* text = lv_textarea_get_text(guider_ui.screen_ta_1);
+    printf("Text to save: %s\r\n", text);
+
+    FRESULT res = f_mount(&fs, "0:", 1);
+    if (res != FR_OK) {
+      printf("f_mount failed: %d\r\n", res);
+    } else {
+      FIL file;
+      res = f_open(&file, "0:account.txt", FA_WRITE | FA_CREATE_ALWAYS);
+      if (res == FR_OK) {
+        UINT written;
+        res = f_write(&file, text, strlen(text), &written);
+        f_close(&file);
+        if (res == FR_OK)
+          printf("Saved %u bytes to file\r\n", written);
+        else
+          printf("f_write error: %d\r\n", res);
+      } else {
+        printf("f_open error: %d\r\n", res);
+      }
+    }
+
+    read_and_parse_data("0:account.txt");
+    update_table_2fa();
+
+    lv_obj_add_flag(kb, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_add_flag(guider_ui.screen_ta_1, LV_OBJ_FLAG_HIDDEN);
+  }
+}
+
 uint32_t struct_time_timestamp(Time_s *time)
 {
   struct tm t;
@@ -205,8 +297,8 @@ uint32_t struct_time_timestamp(Time_s *time)
 void generateMultipleTOTPCodes(uint8_t* hmacKeys[5], uint8_t keyLength, uint32_t timestamp, uint32_t outputCodes[5]) {
   for (int i = 0; i < 5; ++i) {
     TOTP_Generator generator;
-    initTOTP(&generator, hmacKeys[i], keyLength, 30);  // 30秒步长
-    setTOTPTimezone(&generator, 0);                    // UTC 0时区
+    initTOTP(&generator, hmacKeys[i], keyLength, 30);  // 30锟诫步锟斤拷
+    setTOTPTimezone(&generator, 0);                    // UTC 0时锟斤拷
     outputCodes[i] = getTOTPCodeFromTimestamp(&generator, timestamp);
   }
 }
@@ -250,7 +342,6 @@ int main(void)
   MX_GPIO_Init();
   MX_DMA_Init();
   MX_SPI1_Init();
-  MX_RTC_Init();
   MX_I2C3_Init();
   MX_FATFS_Init();
   MX_SPI2_Init();
@@ -273,86 +364,79 @@ int main(void)
 
   uint32_t current_timestamp = 0;
 
-  TOTP_Generator generatorA;
-  TOTP_Generator generatorB;
-  TOTP_Generator generatorC;
-  TOTP_Generator generatorD;
-  TOTP_Generator generatorE;
-
-  printf("%s\r\n", dataEntries[0].code);
-  printf("%s\r\n", dataEntries[1].code);
-  printf("%s\r\n", dataEntries[2].code);
-  printf("%s\r\n", dataEntries[3].code);
-  printf("%s\r\n", dataEntries[4].code);
-
-  uint8_t* hmacKeyA = text_base32_decode_bytes(dataEntries[0].code, NULL);
-  uint8_t* hmacKeyB = text_base32_decode_bytes(dataEntries[1].code, NULL);
-  uint8_t* hmacKeyC = text_base32_decode_bytes(dataEntries[2].code, NULL);
-  uint8_t* hmacKeyD = text_base32_decode_bytes(dataEntries[3].code, NULL);
-  uint8_t* hmacKeyE = text_base32_decode_bytes(dataEntries[4].code, NULL);
-
-  initTOTP(&generatorA, hmacKeyA, 10, 30);
-  initTOTP(&generatorB, hmacKeyB, 10, 30);
-  initTOTP(&generatorC, hmacKeyC, 10, 30);
-  initTOTP(&generatorD, hmacKeyD, 10, 30);
-  initTOTP(&generatorE, hmacKeyE, 10, 30);
+  update_table_2fa();
 
   lv_obj_add_event_cb(guider_ui.screen_list_2_item1, callback_import_account, LV_EVENT_CLICKED, NULL);
   lv_obj_add_event_cb(guider_ui.screen_msgbox_1, callback_close_msc, LV_EVENT_CLICKED, NULL);
 
   lv_obj_add_event_cb(guider_ui.screen_list_4_item0, callback_sync_timestamp, LV_EVENT_CLICKED, NULL);
   lv_obj_add_event_cb(guider_ui.screen_msgbox_2, callback_close_cdc_acm, LV_EVENT_CLICKED, NULL);
+
+  lv_obj_add_event_cb(guider_ui.screen_list_2_item0, callback_manual_edit, LV_EVENT_CLICKED, NULL);
+
+  lv_obj_add_event_cb(guider_ui.g_kb_top_layer, kb_event_cb, LV_EVENT_ALL, NULL);
+
+  uint32_t i_time = 0;
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-    ds1302_get_time(&systemTime);
-    if (systemTime.sec >= 30)
-    {
-      char tmp[16] = {0};
-      sprintf(tmp, "%d", 60 - systemTime.sec);
-      lv_table_set_cell_value(guider_ui.screen_table_1, 1, 2, tmp);
-      lv_table_set_cell_value(guider_ui.screen_table_1, 2, 2, tmp);
-      lv_table_set_cell_value(guider_ui.screen_table_1, 3, 2, tmp);
-      lv_table_set_cell_value(guider_ui.screen_table_1, 4, 2, tmp);
-      lv_table_set_cell_value(guider_ui.screen_table_1, 5, 2, tmp);
-    }else
-    {
-      char tmp[16] = {0};
-      sprintf(tmp, "%d",30 - systemTime.sec);
-      lv_table_set_cell_value(guider_ui.screen_table_1, 1, 2, tmp);
-      lv_table_set_cell_value(guider_ui.screen_table_1, 2, 2, tmp);
-      lv_table_set_cell_value(guider_ui.screen_table_1, 3, 2, tmp);
-      lv_table_set_cell_value(guider_ui.screen_table_1, 4, 2, tmp);
-      lv_table_set_cell_value(guider_ui.screen_table_1, 5, 2, tmp);
-    }
+    // i_time++;
+    // if (i_time == 5000)
+    // {
+      // i_time = 0;
+      if (systemTime.sec >= 30)
+      {
+        char tmp[16] = {0};
+        sprintf(tmp, "%d", 60 - systemTime.sec);
+        lv_table_set_cell_value(guider_ui.screen_table_1, 1, 2, tmp);
+        lv_table_set_cell_value(guider_ui.screen_table_1, 2, 2, tmp);
+        lv_table_set_cell_value(guider_ui.screen_table_1, 3, 2, tmp);
+        lv_table_set_cell_value(guider_ui.screen_table_1, 4, 2, tmp);
+        lv_table_set_cell_value(guider_ui.screen_table_1, 5, 2, tmp);
+      }else
+      {
+        char tmp[16] = {0};
+        sprintf(tmp, "%d",30 - systemTime.sec);
+        lv_table_set_cell_value(guider_ui.screen_table_1, 1, 2, tmp);
+        lv_table_set_cell_value(guider_ui.screen_table_1, 2, 2, tmp);
+        lv_table_set_cell_value(guider_ui.screen_table_1, 3, 2, tmp);
+        lv_table_set_cell_value(guider_ui.screen_table_1, 4, 2, tmp);
+        lv_table_set_cell_value(guider_ui.screen_table_1, 5, 2, tmp);
+      }
 
-    if (sync_state == 1 && err_times == 0)
-    {
-      err_times = 1;
-      extern void usb_transmit_string(uint8_t *data, int32_t length);
-      usb_transmit_string("fail\r\n", 6);
-    }else if (sync_state == 0 && err_times == 0)
-    {
-      err_times = 1;
-      extern void usb_transmit_string(uint8_t *data, int32_t length);
-      usb_transmit_string("ok\r\n", 6);
-    }
+      if (sync_state == 1 && err_times == 0)
+      {
+        err_times = 1;
+        extern void usb_transmit_string(uint8_t *data, int32_t length);
+        usb_transmit_string("fail\r\n", 6);
+      }else if (sync_state == 0 && err_times == 0)
+      {
+        err_times = 1;
+        extern void usb_transmit_string(uint8_t *data, int32_t length);
+        usb_transmit_string("ok\r\n", 6);
+      }
 
-    current_timestamp = struct_time_timestamp(&systemTime) - (uint32_t) 2620801;
-    uint32_t codeA = getTOTPCodeFromTimestamp(&generatorA, current_timestamp);
-    uint32_t codeB = getTOTPCodeFromTimestamp(&generatorB, current_timestamp);
-    uint32_t codeC = getTOTPCodeFromTimestamp(&generatorC, current_timestamp);
-    uint32_t codeD = getTOTPCodeFromTimestamp(&generatorD, current_timestamp);
-    uint32_t codeE = getTOTPCodeFromTimestamp(&generatorE, current_timestamp);
+      ds1302_get_time(&systemTime);
 
-    lv_table_set_cell_value_fmt(guider_ui.screen_table_1, 1, 1, "%06u\r\n", codeA);
-    lv_table_set_cell_value_fmt(guider_ui.screen_table_1, 2, 1, "%06u\r\n", codeB);
-    lv_table_set_cell_value_fmt(guider_ui.screen_table_1, 3, 1, "%06u\r\n", codeC);
-    lv_table_set_cell_value_fmt(guider_ui.screen_table_1, 4, 1, "%06u\r\n", codeD);
-    lv_table_set_cell_value_fmt(guider_ui.screen_table_1, 5, 1, "%06u\r\n", codeE);
+      current_timestamp = struct_time_timestamp(&systemTime) - (uint32_t) 2620800;
+
+      printf("%u\r\n", current_timestamp);
+
+      uint32_t codeA = getTOTPCodeFromTimestamp(&generatorA, current_timestamp);
+      uint32_t codeB = getTOTPCodeFromTimestamp(&generatorB, current_timestamp);
+      uint32_t codeC = getTOTPCodeFromTimestamp(&generatorC, current_timestamp);
+      uint32_t codeD = getTOTPCodeFromTimestamp(&generatorD, current_timestamp);
+      uint32_t codeE = getTOTPCodeFromTimestamp(&generatorE, current_timestamp);
+
+      lv_table_set_cell_value_fmt(guider_ui.screen_table_1, 1, 1, "%06u\r\n", codeA);
+      lv_table_set_cell_value_fmt(guider_ui.screen_table_1, 2, 1, "%06u\r\n", codeB);
+      lv_table_set_cell_value_fmt(guider_ui.screen_table_1, 3, 1, "%06u\r\n", codeC);
+      lv_table_set_cell_value_fmt(guider_ui.screen_table_1, 4, 1, "%06u\r\n", codeD);
+      lv_table_set_cell_value_fmt(guider_ui.screen_table_1, 5, 1, "%06u\r\n", codeE);
+    // }
 
     // printf("%06u\r\n", codeA);
     // printf("%06u\r\n", codeB);
@@ -390,9 +474,8 @@ void SystemClock_Config(void)
   /** Initializes the RCC Oscillators according to the specified parameters
   * in the RCC_OscInitTypeDef structure.
   */
-  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_LSI|RCC_OSCILLATORTYPE_HSE;
+  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSE;
   RCC_OscInitStruct.HSEState = RCC_HSE_ON;
-  RCC_OscInitStruct.LSIState = RCC_LSI_ON;
   RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
   RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
   RCC_OscInitStruct.PLL.PLLM = 4;
@@ -450,89 +533,6 @@ static void MX_I2C3_Init(void)
   /* USER CODE BEGIN I2C3_Init 2 */
 
   /* USER CODE END I2C3_Init 2 */
-
-}
-
-/**
-  * @brief RTC Initialization Function
-  * @param None
-  * @retval None
-  */
-static void MX_RTC_Init(void)
-{
-
-  /* USER CODE BEGIN RTC_Init 0 */
-
-  /* USER CODE END RTC_Init 0 */
-
-  RTC_TimeTypeDef sTime = {0};
-  RTC_DateTypeDef sDate = {0};
-  RTC_AlarmTypeDef sAlarm = {0};
-
-  /* USER CODE BEGIN RTC_Init 1 */
-
-  /* USER CODE END RTC_Init 1 */
-
-  /** Initialize RTC Only
-  */
-  hrtc.Instance = RTC;
-  hrtc.Init.HourFormat = RTC_HOURFORMAT_24;
-  hrtc.Init.AsynchPrediv = 127;
-  hrtc.Init.SynchPrediv = 255;
-  hrtc.Init.OutPut = RTC_OUTPUT_DISABLE;
-  hrtc.Init.OutPutPolarity = RTC_OUTPUT_POLARITY_HIGH;
-  hrtc.Init.OutPutType = RTC_OUTPUT_TYPE_OPENDRAIN;
-  if (HAL_RTC_Init(&hrtc) != HAL_OK)
-  {
-    Error_Handler();
-  }
-
-  /* USER CODE BEGIN Check_RTC_BKUP */
-
-  /* USER CODE END Check_RTC_BKUP */
-
-  /** Initialize RTC and set the Time and Date
-  */
-  sTime.Hours = 0x0;
-  sTime.Minutes = 0x0;
-  sTime.Seconds = 0x0;
-  sTime.DayLightSaving = RTC_DAYLIGHTSAVING_NONE;
-  sTime.StoreOperation = RTC_STOREOPERATION_RESET;
-  if (HAL_RTC_SetTime(&hrtc, &sTime, RTC_FORMAT_BCD) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  sDate.WeekDay = RTC_WEEKDAY_MONDAY;
-  sDate.Month = RTC_MONTH_JANUARY;
-  sDate.Date = 0x1;
-  sDate.Year = 0x0;
-
-  if (HAL_RTC_SetDate(&hrtc, &sDate, RTC_FORMAT_BCD) != HAL_OK)
-  {
-    Error_Handler();
-  }
-
-  /** Enable the Alarm A
-  */
-  sAlarm.AlarmTime.Hours = 0x0;
-  sAlarm.AlarmTime.Minutes = 0x0;
-  sAlarm.AlarmTime.Seconds = 0x1;
-  sAlarm.AlarmTime.SubSeconds = 0x0;
-  sAlarm.AlarmTime.DayLightSaving = RTC_DAYLIGHTSAVING_NONE;
-  sAlarm.AlarmTime.StoreOperation = RTC_STOREOPERATION_RESET;
-  sAlarm.AlarmMask = RTC_ALARMMASK_DATEWEEKDAY|RTC_ALARMMASK_HOURS
-                              |RTC_ALARMMASK_MINUTES;
-  sAlarm.AlarmSubSecondMask = RTC_ALARMSUBSECONDMASK_ALL;
-  sAlarm.AlarmDateWeekDaySel = RTC_ALARMDATEWEEKDAYSEL_DATE;
-  sAlarm.AlarmDateWeekDay = 0x1;
-  sAlarm.Alarm = RTC_ALARM_A;
-  if (HAL_RTC_SetAlarm_IT(&hrtc, &sAlarm, RTC_FORMAT_BCD) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  /* USER CODE BEGIN RTC_Init 2 */
-
-  /* USER CODE END RTC_Init 2 */
 
 }
 
