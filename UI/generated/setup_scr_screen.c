@@ -47,11 +47,11 @@ void setup_scr_screen(lv_ui *ui)
     //Write codes screen_img_3
     ui->screen_img_3 = lv_img_create(ui->screen_cont_1);
     lv_obj_add_flag(ui->screen_img_3, LV_OBJ_FLAG_CLICKABLE);
-    lv_img_set_src(ui->screen_img_3, &_about_alpha_25x25);
+    lv_img_set_src(ui->screen_img_3, &_about_alpha_30x30);
     lv_img_set_pivot(ui->screen_img_3, 50,50);
     lv_img_set_angle(ui->screen_img_3, 0);
     lv_obj_set_pos(ui->screen_img_3, 427, 16);
-    lv_obj_set_size(ui->screen_img_3, 25, 25);
+    lv_obj_set_size(ui->screen_img_3, 30, 30);
 
     //Write style for screen_img_3, Part: LV_PART_MAIN, State: LV_STATE_DEFAULT.
     lv_obj_set_style_img_recolor_opa(ui->screen_img_3, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
@@ -62,11 +62,11 @@ void setup_scr_screen(lv_ui *ui)
     //Write codes screen_img_2
     ui->screen_img_2 = lv_img_create(ui->screen_cont_1);
     lv_obj_add_flag(ui->screen_img_2, LV_OBJ_FLAG_CLICKABLE);
-    lv_img_set_src(ui->screen_img_2, &_menu_alpha_25x25);
+    lv_img_set_src(ui->screen_img_2, &_menu_alpha_30x30);
     lv_img_set_pivot(ui->screen_img_2, 50,50);
     lv_img_set_angle(ui->screen_img_2, 0);
-    lv_obj_set_pos(ui->screen_img_2, 382, 16);
-    lv_obj_set_size(ui->screen_img_2, 25, 25);
+    lv_obj_set_pos(ui->screen_img_2, 373, 16);
+    lv_obj_set_size(ui->screen_img_2, 30, 30);
 
     //Write style for screen_img_2, Part: LV_PART_MAIN, State: LV_STATE_DEFAULT.
     lv_obj_set_style_img_recolor_opa(ui->screen_img_2, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
@@ -77,11 +77,11 @@ void setup_scr_screen(lv_ui *ui)
     //Write codes screen_img_1
     ui->screen_img_1 = lv_img_create(ui->screen_cont_1);
     lv_obj_add_flag(ui->screen_img_1, LV_OBJ_FLAG_CLICKABLE);
-    lv_img_set_src(ui->screen_img_1, &_add_alpha_30x30);
+    lv_img_set_src(ui->screen_img_1, &_add_alpha_35x35);
     lv_img_set_pivot(ui->screen_img_1, 50,50);
     lv_img_set_angle(ui->screen_img_1, 0);
-    lv_obj_set_pos(ui->screen_img_1, 332, 14);
-    lv_obj_set_size(ui->screen_img_1, 30, 30);
+    lv_obj_set_pos(ui->screen_img_1, 314, 13);
+    lv_obj_set_size(ui->screen_img_1, 35, 35);
 
     //Write style for screen_img_1, Part: LV_PART_MAIN, State: LV_STATE_DEFAULT.
     lv_obj_set_style_img_recolor_opa(ui->screen_img_1, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
@@ -116,25 +116,25 @@ void setup_scr_screen(lv_ui *ui)
     ui->screen_table_1 = lv_table_create(ui->screen_cont_1);
     lv_table_set_col_cnt(ui->screen_table_1,3);
     lv_table_set_row_cnt(ui->screen_table_1,6);
-    lv_table_set_cell_value(ui->screen_table_1,0,0,"Account");
+    lv_table_set_cell_value(ui->screen_table_1,0,0,"账号");
     lv_table_set_cell_value(ui->screen_table_1,1,0,"-");
     lv_table_set_cell_value(ui->screen_table_1,2,0,"-");
     lv_table_set_cell_value(ui->screen_table_1,3,0,"-");
     lv_table_set_cell_value(ui->screen_table_1,4,0,"-");
     lv_table_set_cell_value(ui->screen_table_1,5,0,"-");
-    lv_table_set_cell_value(ui->screen_table_1,0,1,"2FA Code");
+    lv_table_set_cell_value(ui->screen_table_1,0,1,"验证码");
     lv_table_set_cell_value(ui->screen_table_1,1,1,"-");
     lv_table_set_cell_value(ui->screen_table_1,2,1,"-");
     lv_table_set_cell_value(ui->screen_table_1,3,1,"-");
     lv_table_set_cell_value(ui->screen_table_1,4,1,"-");
     lv_table_set_cell_value(ui->screen_table_1,5,1,"-");
-    lv_table_set_cell_value(ui->screen_table_1,0,2,"EXP Time");
+    lv_table_set_cell_value(ui->screen_table_1,0,2,"过期时间");
     lv_table_set_cell_value(ui->screen_table_1,1,2,"-");
     lv_table_set_cell_value(ui->screen_table_1,2,2,"-");
     lv_table_set_cell_value(ui->screen_table_1,3,2,"-");
     lv_table_set_cell_value(ui->screen_table_1,4,2,"-");
     lv_table_set_cell_value(ui->screen_table_1,5,2,"-");
-    lv_obj_set_pos(ui->screen_table_1, 42, 66);
+    lv_obj_set_pos(ui->screen_table_1, 41, 65);
     lv_obj_set_scrollbar_mode(ui->screen_table_1, LV_SCROLLBAR_MODE_OFF);
 
     //Write style for screen_table_1, Part: LV_PART_MAIN, State: LV_STATE_DEFAULT.
@@ -154,7 +154,7 @@ void setup_scr_screen(lv_ui *ui)
 
     //Write style for screen_table_1, Part: LV_PART_ITEMS, State: LV_STATE_DEFAULT.
     lv_obj_set_style_text_color(ui->screen_table_1, lv_color_hex(0x393c41), LV_PART_ITEMS|LV_STATE_DEFAULT);
-    lv_obj_set_style_text_font(ui->screen_table_1, &lv_font_montserratMedium_15, LV_PART_ITEMS|LV_STATE_DEFAULT);
+    lv_obj_set_style_text_font(ui->screen_table_1, &lv_font_SourceHanSerifSC_Regular_17, LV_PART_ITEMS|LV_STATE_DEFAULT);
     lv_obj_set_style_text_opa(ui->screen_table_1, 255, LV_PART_ITEMS|LV_STATE_DEFAULT);
     lv_obj_set_style_text_align(ui->screen_table_1, LV_TEXT_ALIGN_CENTER, LV_PART_ITEMS|LV_STATE_DEFAULT);
     lv_obj_set_style_bg_opa(ui->screen_table_1, 0, LV_PART_ITEMS|LV_STATE_DEFAULT);
@@ -162,17 +162,17 @@ void setup_scr_screen(lv_ui *ui)
     lv_obj_set_style_border_opa(ui->screen_table_1, 255, LV_PART_ITEMS|LV_STATE_DEFAULT);
     lv_obj_set_style_border_color(ui->screen_table_1, lv_color_hex(0xd5dee6), LV_PART_ITEMS|LV_STATE_DEFAULT);
     lv_obj_set_style_border_side(ui->screen_table_1, LV_BORDER_SIDE_FULL, LV_PART_ITEMS|LV_STATE_DEFAULT);
-    lv_obj_set_style_pad_top(ui->screen_table_1, 10, LV_PART_ITEMS|LV_STATE_DEFAULT);
+    lv_obj_set_style_pad_top(ui->screen_table_1, 0, LV_PART_ITEMS|LV_STATE_DEFAULT);
     lv_obj_set_style_pad_bottom(ui->screen_table_1, 10, LV_PART_ITEMS|LV_STATE_DEFAULT);
     lv_obj_set_style_pad_left(ui->screen_table_1, 10, LV_PART_ITEMS|LV_STATE_DEFAULT);
     lv_obj_set_style_pad_right(ui->screen_table_1, 10, LV_PART_ITEMS|LV_STATE_DEFAULT);
 
     //Write codes screen_list_2
     ui->screen_list_2 = lv_list_create(ui->screen_cont_1);
-    ui->screen_list_2_item0 = lv_list_add_btn(ui->screen_list_2, LV_SYMBOL_EDIT, "Edit Account");
-    ui->screen_list_2_item1 = lv_list_add_btn(ui->screen_list_2, LV_SYMBOL_DOWNLOAD, "Import Account");
-    ui->screen_list_2_item2 = lv_list_add_btn(ui->screen_list_2, LV_SYMBOL_UPLOAD, "Export Account");
-    ui->screen_list_2_item3 = lv_list_add_btn(ui->screen_list_2, LV_SYMBOL_DIRECTORY, "History");
+    ui->screen_list_2_item0 = lv_list_add_btn(ui->screen_list_2, LV_SYMBOL_EDIT, "编辑账号");
+    ui->screen_list_2_item1 = lv_list_add_btn(ui->screen_list_2, LV_SYMBOL_DOWNLOAD, "导入账号");
+    ui->screen_list_2_item2 = lv_list_add_btn(ui->screen_list_2, LV_SYMBOL_UPLOAD, "导出账号");
+    ui->screen_list_2_item3 = lv_list_add_btn(ui->screen_list_2, LV_SYMBOL_DIRECTORY, "历史操作");
     lv_obj_set_pos(ui->screen_list_2, 306, 47);
     lv_obj_set_size(ui->screen_list_2, 160, 108);
     lv_obj_set_scrollbar_mode(ui->screen_list_2, LV_SCROLLBAR_MODE_OFF);
@@ -243,7 +243,7 @@ void setup_scr_screen(lv_ui *ui)
     lv_style_set_pad_bottom(&style_screen_list_2_extra_texts_main_default, 5);
     lv_style_set_border_width(&style_screen_list_2_extra_texts_main_default, 0);
     lv_style_set_text_color(&style_screen_list_2_extra_texts_main_default, lv_color_hex(0x0D3055));
-    lv_style_set_text_font(&style_screen_list_2_extra_texts_main_default, &lv_font_montserratMedium_12);
+    lv_style_set_text_font(&style_screen_list_2_extra_texts_main_default, &lv_font_SourceHanSerifSC_Regular_12);
     lv_style_set_text_opa(&style_screen_list_2_extra_texts_main_default, 255);
     lv_style_set_radius(&style_screen_list_2_extra_texts_main_default, 3);
     lv_style_set_transform_width(&style_screen_list_2_extra_texts_main_default, 0);
@@ -253,8 +253,8 @@ void setup_scr_screen(lv_ui *ui)
 
     //Write codes screen_list_3
     ui->screen_list_3 = lv_list_create(ui->screen_cont_1);
-    ui->screen_list_3_item0 = lv_list_add_btn(ui->screen_list_3, LV_SYMBOL_EYE_OPEN, "Scan QR-Code");
-    ui->screen_list_3_item1 = lv_list_add_btn(ui->screen_list_3, LV_SYMBOL_KEYBOARD, "Manual Add");
+    ui->screen_list_3_item0 = lv_list_add_btn(ui->screen_list_3, LV_SYMBOL_EYE_OPEN, "扫描QR码");
+    ui->screen_list_3_item1 = lv_list_add_btn(ui->screen_list_3, LV_SYMBOL_KEYBOARD, "手动输入");
     lv_obj_set_pos(ui->screen_list_3, 306, 47);
     lv_obj_set_size(ui->screen_list_3, 160, 65);
     lv_obj_set_scrollbar_mode(ui->screen_list_3, LV_SCROLLBAR_MODE_OFF);
@@ -323,7 +323,7 @@ void setup_scr_screen(lv_ui *ui)
     lv_style_set_pad_bottom(&style_screen_list_3_extra_texts_main_default, 5);
     lv_style_set_border_width(&style_screen_list_3_extra_texts_main_default, 0);
     lv_style_set_text_color(&style_screen_list_3_extra_texts_main_default, lv_color_hex(0x0D3055));
-    lv_style_set_text_font(&style_screen_list_3_extra_texts_main_default, &lv_font_montserratMedium_12);
+    lv_style_set_text_font(&style_screen_list_3_extra_texts_main_default, &lv_font_SourceHanSerifSC_Regular_12);
     lv_style_set_text_opa(&style_screen_list_3_extra_texts_main_default, 255);
     lv_style_set_radius(&style_screen_list_3_extra_texts_main_default, 3);
     lv_style_set_transform_width(&style_screen_list_3_extra_texts_main_default, 0);
@@ -333,8 +333,8 @@ void setup_scr_screen(lv_ui *ui)
 
     //Write codes screen_list_4
     ui->screen_list_4 = lv_list_create(ui->screen_cont_1);
-    ui->screen_list_4_item0 = lv_list_add_btn(ui->screen_list_4, LV_SYMBOL_SHUFFLE, "Sync Timestamp");
-    ui->screen_list_4_item1 = lv_list_add_btn(ui->screen_list_4, LV_SYMBOL_ENVELOPE, "About Me");
+    ui->screen_list_4_item0 = lv_list_add_btn(ui->screen_list_4, LV_SYMBOL_SHUFFLE, "同步时间戳");
+    ui->screen_list_4_item1 = lv_list_add_btn(ui->screen_list_4, LV_SYMBOL_ENVELOPE, "关于...");
     lv_obj_set_pos(ui->screen_list_4, 306, 47);
     lv_obj_set_size(ui->screen_list_4, 160, 65);
     lv_obj_set_scrollbar_mode(ui->screen_list_4, LV_SCROLLBAR_MODE_OFF);
@@ -403,7 +403,7 @@ void setup_scr_screen(lv_ui *ui)
     lv_style_set_pad_bottom(&style_screen_list_4_extra_texts_main_default, 5);
     lv_style_set_border_width(&style_screen_list_4_extra_texts_main_default, 0);
     lv_style_set_text_color(&style_screen_list_4_extra_texts_main_default, lv_color_hex(0x0D3055));
-    lv_style_set_text_font(&style_screen_list_4_extra_texts_main_default, &lv_font_montserratMedium_12);
+    lv_style_set_text_font(&style_screen_list_4_extra_texts_main_default, &lv_font_SourceHanSerifSC_Regular_12);
     lv_style_set_text_opa(&style_screen_list_4_extra_texts_main_default, 255);
     lv_style_set_radius(&style_screen_list_4_extra_texts_main_default, 3);
     lv_style_set_transform_width(&style_screen_list_4_extra_texts_main_default, 0);
@@ -413,7 +413,7 @@ void setup_scr_screen(lv_ui *ui)
 
     //Write codes screen_msgbox_1
     static const char * screen_msgbox_1_btns[] = {"Done", ""};
-    ui->screen_msgbox_1 = lv_msgbox_create(ui->screen_cont_1, "USB DEVICE MSC", "Please Edit From PC\nOr\nJust Copy account.txt To Disk", screen_msgbox_1_btns, false);
+    ui->screen_msgbox_1 = lv_msgbox_create(ui->screen_cont_1, "USB DEVICE MSC", "请连接电脑\n\n修改MSC设备中的account.txt\n\n以更新账号信息", screen_msgbox_1_btns, false);
     lv_obj_set_size(lv_msgbox_get_btns(ui->screen_msgbox_1), 60, 29);
     lv_obj_set_pos(ui->screen_msgbox_1, 41, 56);
     lv_obj_set_size(ui->screen_msgbox_1, 394, 229);
@@ -448,7 +448,7 @@ void setup_scr_screen(lv_ui *ui)
     ui_init_style(&style_screen_msgbox_1_extra_content_main_default);
 
     lv_style_set_text_color(&style_screen_msgbox_1_extra_content_main_default, lv_color_hex(0x4e4e4e));
-    lv_style_set_text_font(&style_screen_msgbox_1_extra_content_main_default, &lv_font_arial_19);
+    lv_style_set_text_font(&style_screen_msgbox_1_extra_content_main_default, &lv_font_SourceHanSerifSC_Regular_19);
     lv_style_set_text_opa(&style_screen_msgbox_1_extra_content_main_default, 255);
     lv_style_set_text_letter_space(&style_screen_msgbox_1_extra_content_main_default, 0);
     lv_style_set_text_line_space(&style_screen_msgbox_1_extra_content_main_default, 0);
@@ -470,7 +470,7 @@ void setup_scr_screen(lv_ui *ui)
 
     //Write codes screen_msgbox_2
     static const char * screen_msgbox_2_btns[] = {"Done", ""};
-    ui->screen_msgbox_2 = lv_msgbox_create(ui->screen_cont_1, "USB DEVICE CDC ACM", "Please Connect To Upper\n\nWait For Sync", screen_msgbox_2_btns, false);
+    ui->screen_msgbox_2 = lv_msgbox_create(ui->screen_cont_1, "USB DEVICE CDC ACM", "请连接上位机\n\n以便可以同步时间", screen_msgbox_2_btns, false);
     lv_obj_set_size(lv_msgbox_get_btns(ui->screen_msgbox_2), 60, 29);
     lv_obj_set_pos(ui->screen_msgbox_2, 41, 56);
     lv_obj_set_size(ui->screen_msgbox_2, 394, 229);
@@ -505,7 +505,7 @@ void setup_scr_screen(lv_ui *ui)
     ui_init_style(&style_screen_msgbox_2_extra_content_main_default);
 
     lv_style_set_text_color(&style_screen_msgbox_2_extra_content_main_default, lv_color_hex(0x4e4e4e));
-    lv_style_set_text_font(&style_screen_msgbox_2_extra_content_main_default, &lv_font_arial_19);
+    lv_style_set_text_font(&style_screen_msgbox_2_extra_content_main_default, &lv_font_SourceHanSerifSC_Regular_19);
     lv_style_set_text_opa(&style_screen_msgbox_2_extra_content_main_default, 255);
     lv_style_set_text_letter_space(&style_screen_msgbox_2_extra_content_main_default, 0);
     lv_style_set_text_line_space(&style_screen_msgbox_2_extra_content_main_default, 0);
@@ -524,6 +524,29 @@ void setup_scr_screen(lv_ui *ui)
     lv_style_set_text_font(&style_screen_msgbox_2_extra_btns_items_default, &lv_font_montserratMedium_15);
     lv_style_set_text_opa(&style_screen_msgbox_2_extra_btns_items_default, 255);
     lv_obj_add_style(lv_msgbox_get_btns(ui->screen_msgbox_2), &style_screen_msgbox_2_extra_btns_items_default, LV_PART_ITEMS|LV_STATE_DEFAULT);
+
+    //Write codes screen_label_2
+    ui->screen_label_2 = lv_label_create(ui->screen_cont_1);
+    lv_label_set_text(ui->screen_label_2, "郭储源 2023302106");
+    lv_label_set_long_mode(ui->screen_label_2, LV_LABEL_LONG_SCROLL_CIRCULAR);
+    lv_obj_set_pos(ui->screen_label_2, 0, 234);
+    lv_obj_set_size(ui->screen_label_2, 32, 32);
+
+    //Write style for screen_label_2, Part: LV_PART_MAIN, State: LV_STATE_DEFAULT.
+    lv_obj_set_style_border_width(ui->screen_label_2, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_radius(ui->screen_label_2, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_text_color(ui->screen_label_2, lv_color_hex(0x000000), LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_text_font(ui->screen_label_2, &lv_font_SourceHanSerifSC_Regular_16, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_text_opa(ui->screen_label_2, 255, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_text_letter_space(ui->screen_label_2, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_text_line_space(ui->screen_label_2, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_text_align(ui->screen_label_2, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_opa(ui->screen_label_2, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_pad_top(ui->screen_label_2, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_pad_right(ui->screen_label_2, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_pad_bottom(ui->screen_label_2, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_pad_left(ui->screen_label_2, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
+    lv_obj_set_style_shadow_width(ui->screen_label_2, 0, LV_PART_MAIN|LV_STATE_DEFAULT);
 
     //The custom code of screen.
 

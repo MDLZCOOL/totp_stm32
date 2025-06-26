@@ -212,16 +212,6 @@ DWORD fat_GetFatTimeFromRTC() {
     }
 }
 
-#define MAX_LINE_LEN 128
-#define MAX_NAME_LEN 32
-#define MAX_CODE_LEN 16
-#define MAX_ENTRIES  10
-
-typedef struct {
-    char name[MAX_NAME_LEN];
-    char code[MAX_CODE_LEN];
-} EntryData_t;
-
 EntryData_t dataEntries[MAX_ENTRIES];
 int numEntries = 0;
 
@@ -286,7 +276,7 @@ void read_and_parse_data(const char* filename) {
         // Ensure we don't go beyond the table's capacity or MAX_ENTRIES
         if (i + 1 < lv_table_get_row_cnt(guider_ui.screen_table_1)) {
             lv_table_set_cell_value(guider_ui.screen_table_1, i + 1, 0, dataEntries[i].name);
-            lv_table_set_cell_value(guider_ui.screen_table_1, i + 1, 1, dataEntries[i].code);
+            // lv_table_set_cell_value(guider_ui.screen_table_1, i + 1, 1, dataEntries[i].code);
         } else {
             printf("Warning: Not enough rows in LVGL table to display all data entries.\r\n");
             break; // Stop if no more rows are available in the table

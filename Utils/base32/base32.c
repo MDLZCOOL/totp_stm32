@@ -60,24 +60,30 @@ int bytes_to_hex(const unsigned char *input, int input_len, char *output) {
     return input_len * 2;
 }
 
-int text_base32_hex(const char *text, uint8_t *output) {
-    const char *base32_input = text;
-    size_t max_decoded_len = (strlen(base32_input) * 5 + 7) / 8;
-
-    unsigned char *decoded_bytes = (unsigned char *)malloc(max_decoded_len);
-    if (decoded_bytes == NULL) {
-        perror("Failed to allocate memory for decoded bytes");
-        return 1;
+uint8_t* text_base32_decode_bytes(const char *text, int *out_len) {
+    size_t max_decoded_len = (strlen(text) * 5 + 7) / 8;
+    uint8_t *decoded_bytes = (uint8_t *)malloc(max_decoded_len);
+    if (!decoded_bytes) {
+        perror("Failed to allocate memory");
+        if (out_len) *out_len = -1;
+        return NULL;
     }
-    int decoded_len = base32_decode(base32_input, decoded_bytes);
-    if (decoded_len == -1) {
-        fprintf(stderr, "Base32 decoding failed for input: %s\n", base32_input);
+
+    int decoded_len = base32_decode(text, decoded_bytes);
+    if (decoded_len < 0) {
+        fprintf(stderr, "Base32 decoding failed for input: %s\n", text);
         free(decoded_bytes);
-        return 1;
+        if (out_len) *out_len = -1;
+        return NULL;
     }
-    int hex_len = bytes_to_hex(decoded_bytes, decoded_len, (char *)output);
-    output[hex_len] = '\0';
-    free(decoded_bytes);
 
-    return 0;
+    if (out_len) *out_len = decoded_len;
+
+    printf("Decoded bytes: ");
+    for (int i = 0; i < decoded_len; i++) {
+        printf("%02x ", decoded_bytes[i]);
+    }
+    printf("\n");
+
+    return decoded_bytes;
 }

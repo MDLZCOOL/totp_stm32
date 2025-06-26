@@ -63,6 +63,7 @@ extern Time_s systemTime;
 extern int sync_state; // 0 refer OK, 1 refer fail
 extern int err_times;
 void SPI1_SetSpeed(uint8_t SpeedSet);
+  uint32_t struct_time_timestamp(Time_s *time);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/

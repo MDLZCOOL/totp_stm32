@@ -80,10 +80,8 @@ uint8_t weekday, date, month;
 uint16_t year;
 RTC_TimeTypeDef sTime;
 RTC_DateTypeDef sDate;
-uint32_t current_timestamp;
 lv_ui guider_ui;
 uint8_t hmacKey[] = {0x87, 0xa8, 0xfa, 0x14, 0x93, 0x6c, 0x4e, 0x64, 0x91, 0x0e};
-uint8_t testbase32[128] = {0};
 Time_s syncTime = {.clockSystem = DS1302_CLK_SYSTEM_24};
 Time_s systemTime = {.clockSystem = DS1302_CLK_SYSTEM_24};
 int sync_state = 3; // 0 refer OK, 1 refer fail, 3 refer init
@@ -204,6 +202,21 @@ uint32_t struct_time_timestamp(Time_s *time)
   return mktime(&t);
 }
 
+void generateMultipleTOTPCodes(uint8_t* hmacKeys[5], uint8_t keyLength, uint32_t timestamp, uint32_t outputCodes[5]) {
+  for (int i = 0; i < 5; ++i) {
+    TOTP_Generator generator;
+    initTOTP(&generator, hmacKeys[i], keyLength, 30);  // 30秒步长
+    setTOTPTimezone(&generator, 0);                    // UTC 0时区
+    outputCodes[i] = getTOTPCodeFromTimestamp(&generator, timestamp);
+  }
+}
+
+void decodeMultipleBase32Keys(const char* base32_texts[5], uint8_t* decoded_keys[5], int key_lengths[5]) {
+  for (int i = 0; i < 5; ++i) {
+    decoded_keys[i] = text_base32_decode_bytes(base32_texts[i], &key_lengths[i]);
+  }
+}
+
 /* USER CODE END 0 */
 
 /**
@@ -245,10 +258,6 @@ int main(void)
   SEGGER_RTT_Init();
   SEGGER_RTT_printf(0, "System begin...\r\n");
 
-  ds1302_init();
-
-  TOTP(hmacKey, 10, 30);
-
   BLK_OFF;
   lv_init();
   lv_port_disp_init();
@@ -256,9 +265,37 @@ int main(void)
   setup_ui(&guider_ui);
   BLK_ON;
 
+  ds1302_init();
+
   W25QXX_Init();
 
   read_and_parse_data("0:account.txt");
+
+  uint32_t current_timestamp = 0;
+
+  TOTP_Generator generatorA;
+  TOTP_Generator generatorB;
+  TOTP_Generator generatorC;
+  TOTP_Generator generatorD;
+  TOTP_Generator generatorE;
+
+  printf("%s\r\n", dataEntries[0].code);
+  printf("%s\r\n", dataEntries[1].code);
+  printf("%s\r\n", dataEntries[2].code);
+  printf("%s\r\n", dataEntries[3].code);
+  printf("%s\r\n", dataEntries[4].code);
+
+  uint8_t* hmacKeyA = text_base32_decode_bytes(dataEntries[0].code, NULL);
+  uint8_t* hmacKeyB = text_base32_decode_bytes(dataEntries[1].code, NULL);
+  uint8_t* hmacKeyC = text_base32_decode_bytes(dataEntries[2].code, NULL);
+  uint8_t* hmacKeyD = text_base32_decode_bytes(dataEntries[3].code, NULL);
+  uint8_t* hmacKeyE = text_base32_decode_bytes(dataEntries[4].code, NULL);
+
+  initTOTP(&generatorA, hmacKeyA, 10, 30);
+  initTOTP(&generatorB, hmacKeyB, 10, 30);
+  initTOTP(&generatorC, hmacKeyC, 10, 30);
+  initTOTP(&generatorD, hmacKeyD, 10, 30);
+  initTOTP(&generatorE, hmacKeyE, 10, 30);
 
   lv_obj_add_event_cb(guider_ui.screen_list_2_item1, callback_import_account, LV_EVENT_CLICKED, NULL);
   lv_obj_add_event_cb(guider_ui.screen_msgbox_1, callback_close_msc, LV_EVENT_CLICKED, NULL);
@@ -303,10 +340,30 @@ int main(void)
       extern void usb_transmit_string(uint8_t *data, int32_t length);
       usb_transmit_string("ok\r\n", 6);
     }
+
     current_timestamp = struct_time_timestamp(&systemTime) - (uint32_t) 2620801;
-    uint32_t code = getCodeFromSteps(current_timestamp / 30);
-    SEGGER_RTT_printf(0, "Current Unix Timestamp: %lu\r\n", current_timestamp);
-    SEGGER_RTT_printf(0, "Current Code: %lu\r\n", code);
+    uint32_t codeA = getTOTPCodeFromTimestamp(&generatorA, current_timestamp);
+    uint32_t codeB = getTOTPCodeFromTimestamp(&generatorB, current_timestamp);
+    uint32_t codeC = getTOTPCodeFromTimestamp(&generatorC, current_timestamp);
+    uint32_t codeD = getTOTPCodeFromTimestamp(&generatorD, current_timestamp);
+    uint32_t codeE = getTOTPCodeFromTimestamp(&generatorE, current_timestamp);
+
+    lv_table_set_cell_value_fmt(guider_ui.screen_table_1, 1, 1, "%06u\r\n", codeA);
+    lv_table_set_cell_value_fmt(guider_ui.screen_table_1, 2, 1, "%06u\r\n", codeB);
+    lv_table_set_cell_value_fmt(guider_ui.screen_table_1, 3, 1, "%06u\r\n", codeC);
+    lv_table_set_cell_value_fmt(guider_ui.screen_table_1, 4, 1, "%06u\r\n", codeD);
+    lv_table_set_cell_value_fmt(guider_ui.screen_table_1, 5, 1, "%06u\r\n", codeE);
+
+    // printf("%06u\r\n", codeA);
+    // printf("%06u\r\n", codeB);
+    // printf("%06u\r\n", codeC);
+    // printf("%06u\r\n", codeD);
+    // printf("%06u\r\n", codeE);
+
+    // SEGGER_RTT_printf(0, "Current Unix Timestamp: %lu\r\n", current_timestamp);
+    // printf("OTP: %06u\n", code);
+    // SEGGER_RTT_printf(0, "Current Unix Timestamp: %lu\r\n", current_timestamp);
+    // SEGGER_RTT_printf(0, "Current Code: %lu\r\n", code);
     // SEGGER_RTT_printf(0, "alive\r\n");
     lv_timer_handler();
     /* USER CODE END WHILE */

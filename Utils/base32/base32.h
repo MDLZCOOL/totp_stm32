@@ -6,7 +6,5 @@
 #include <ctype.h>
 #include <stdint.h>
 
-int bytes_to_hex(const unsigned char *input, int input_len, char *output);
-int base32_decode(const char *input, unsigned char *output);
-int text_base32_hex(const char *text, uint8_t *output);
+uint8_t* text_base32_decode_bytes(const char *text, int *out_len);
 

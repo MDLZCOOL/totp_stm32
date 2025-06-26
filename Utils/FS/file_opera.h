@@ -15,6 +15,19 @@
 #include <stdio.h>
 #include "main.h"
 
+#define MAX_LINE_LEN 128
+#define MAX_NAME_LEN 32
+#define MAX_CODE_LEN 17
+#define MAX_ENTRIES  10
+
+typedef struct {
+  char name[MAX_NAME_LEN];
+  char code[MAX_CODE_LEN];
+} EntryData_t;
+
+extern EntryData_t dataEntries[MAX_ENTRIES];
+extern int numEntries;
+
 void fatTest_GetDiskInfo();
 void fatTest_ScanDir(const TCHAR* PathName);
 void fatTest_WriteTXTFile(TCHAR* filename, uint16_t year, uint8_t month, uint8_t day);
